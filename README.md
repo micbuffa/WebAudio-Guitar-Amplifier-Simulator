@@ -31,7 +31,8 @@ your browser. You can change the port, edit server.js.
 
 If you plan to host the app somewhere, you need to have a server that support HTTPS as the getUserMedia API we use for getting the input audio stream from the microphone or sound card requires HTTPS.
 
-How to add presets ?
+How to add presets?
+-------------------
 
 So far, there is no persistence system implemented for saving the presets. There are all located in the amp.js file, look for "preset".
 If you open the console in your browser devtools and press the "show current settings" button, then it will print an array object in the
