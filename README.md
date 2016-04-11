@@ -2,7 +2,7 @@
 A Guitar Amplifier SImulator written using the Web Audio API
 
 This is a guitar amplifier re-created using the WebAudio API. Lots of time has been spent getting an accurate model and adjust
-the different parameters of the Web Audio nodes, with a guitar in hands and a headphone.
+the different parameters of the Web Audio nodes, with a guitar in hands and a headphone. Believe me: it SOUNDS!
 
 ![Web Audio AMp Simulator](http://i.imgur.com/WhImffj.jpg)
 
