@@ -4,6 +4,8 @@ A Guitar Amplifier SImulator written using the Web Audio API
 This is a guitar amplifier re-created using the WebAudio API. Lots of time has been spent getting an accurate model and adjust
 the different parameters of the Web Audio nodes, with a guitar in hands and a headphone.
 
+![GTV1: main windows picture](http://i.imgur.com/gwbVXZR.jpg)
+
 The GUI uses the Web Audio Controls web components by g200Kg.
 
 How to use ?
