@@ -871,6 +871,12 @@ function Amp(context) {
         preset18 = {"name":"Gainsbourgh Funk","distoName":"superClean","LCF":345,"HCF":18461,"K1":"0.4","K2":"0.4","K3":"0.7","K4":"0.7","F1":186,"F2":792,"F3":2402,"F4":6368,"Q1":"0.0","Q2":"23.7","Q3":"1.0","Q4":"1.0","OG":"6.6","BF":"8.0","MF":"1.3","TF":"5.9","PF":"10.0","EQ":[12,-2,-10,-20,2,11],"MV":"10.0","RG":"2.0","CG":"4.2"}
         presets.push(preset18);
 
+        preset19 = {"name":"Revolution Beatles","distoName":"HiGainModern","LCF":200,"HCF":12000,"K1":"2.3","K2":"2.3","K3":"4.6","K4":"4.6","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"1.9","Q2":"3.4","Q3":"4.2","Q4":"11.0","OG":"0.5","BF":"5.0","MF":"2.2","TF":"4.7","PF":"8.0","EQ":[-2,9,29,29,1,-3],"MV":"0.2","RG":"1.7","CG":"4.9"}
+        presets.push(preset19);
+
+        preset20 = {"name":"Noisy 2","distoName":"NoisyHiGain","LCF":289,"HCF":8720,"K1":"5.1","K2":"3.7","K3":"5.0","K4":"5.0","F1":91,"F2":548,"F3":1820,"F4":4535,"Q1":"4.3","Q2":"0.5","Q3":"0.3","Q4":"2.8","OG":"6.7","BF":"8.1","MF":"7.3","TF":"3.2","PF":"6.1","EQ":[9,-10,3,10,4,-17],"MV":"3.5","RG":"3.7","CG":"8.5"}
+        presets.push(preset20);
+
         presets.forEach(function (p, index) {
             var option = document.createElement("option");
             option.value = index;
