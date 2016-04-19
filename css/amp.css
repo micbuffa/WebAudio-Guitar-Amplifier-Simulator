@@ -43,8 +43,15 @@ div audio {
   font-family: "Open Sans";
   font-size: 12px;
 }
-
-
+/*
+.ampGUI {
+  transition:all 1s;
+  transform:scale(0.2, 0.2);
+}
+.ampGUI:hover {
+  transform:scale(1, 1);
+}
+*/
 div.controls:hover {
   color:blue;
   font-weight:bold;
@@ -65,7 +72,7 @@ div.controls label, div.controls input, output {
 
 /* --- ON OFF --- */
 .onoffswitch {
-    position: relative; width: 59px;
+    position: relative; width: 199px;
     -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
 }
 .onoffswitch-checkbox {
@@ -85,13 +92,13 @@ div.controls label, div.controls input, output {
     box-sizing: border-box;
 }
 .onoffswitch-inner:before {
-    content: "ON";
+    content: "Oversampling 4x ON";
     padding-left: 0px;
     background-color: #C23439; color: #FFFFFF;
 }
 .onoffswitch-inner:after {
-    content: "OFF";
-    padding-right: 9px;
+    content: "Oversampling 4x OFF";
+    padding-right: 58px;
     background-color: #1C0B0B; color: #999999;
     text-align: right;
 }

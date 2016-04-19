@@ -41,6 +41,15 @@ function WaveShapers() {
             return c;
         };
 
+        /*
+        distorsionCurves.asymetric = function (distorsionValue) {
+            var c = new Float32Array(44100);
+            var kTuna = distorsionValue / 1500;
+            asymetric(kTuna, 44100, c);
+            return c;
+        };
+        */
+
         distorsionCurves.notSoDistorded = function (distorsionValue) {
             var k = distorsionValue / 150;
             var c = notSoDistorded(k);
@@ -152,6 +161,22 @@ function WaveShapers() {
             ws_table[i] = sign(x) * y * (1 / ((a + 1) / 2));
         }
     }
+
+    // tuna JS 5
+    function asymetric(amount, n_samples, ws_table) {
+        var i, x;
+        for (i = 0; i < n_samples; i++) {
+            x = i * 2 / n_samples - 1;
+            if (x < -0.08905) {
+                ws_table[i] = (-3 / 4) * (1 - (Math.pow((1 - (Math.abs(x) - 0.032857)), 12)) + (1 / 3) * (Math.abs(x) - 0.032847)) + 0.01;
+            } else if (x >= -0.08905 && x < 0.320018) {
+                ws_table[i] = (-6.153 * (x * x)) + 3.9375 * x;
+            } else {
+                ws_table[i] = 0.630035;
+            }
+        }
+    }
+
 
     // From GFX, tweaked for most of them...
     function notSoDistorded(a) {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <title>WebAudio guitar amp sim</title>
-     <script src="js/platform.js"></script>
+    <script src="js/platform.js"></script>
     <script src="js/adapter.js"></script>
     <script src="js/initAudio.js"></script>
     <script src="js/visualization.js"></script>
@@ -52,22 +52,20 @@
    
 <div class="eq">
   <h2>Advanced settings</h2>
-  <!--
-    <div class="onoffswitch">
-    <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="myonoffswitch" checked onclick="amp.bypass(this);">
-    <label class="onoffswitch-label" for="myonoffswitch">
-        <span class="onoffswitch-inner"></span>
-        <span class="onoffswitch-switch"></span>
-    </label>
-</div>
--->
+  
   <p>Press play to preview presets</p>
   <audio id="player" controls crossorigin="anonymous" loop>
   <source src="assets/audio/g_t_120_30.mp3">
   
   Your browser does not support the audio tag.
 </audio>
-
+  <div class="onoffswitch">
+      <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="myonoffswitch"  onclick="amp.changeOversampling(this);">
+      <label class="onoffswitch-label" for="myonoffswitch">
+          <span class="onoffswitch-inner"></span>
+          <span class="onoffswitch-switch"></span>
+      </label>
+    </div>
  <!-- 
   Presets: 
   <select id="QFPresetMenu2">
@@ -242,6 +240,7 @@
  
     <section style="flex: 4; order: 1;">
     <div class="ampGUI" style="position:relative;background-image: url('img/imageprincipalefinienew.png');width:1127px;height:545px;padding:0px;">
+      <div>
         <webaudio-knob id="Knob1"   step="0.1" log=false style="position:absolute;left:66px;top:90px" src="img/Prophet.png" value="0"  min="0" max="10" diameter="69" sprites="99" tooltip="Volume" ></webaudio-knob>
         <webaudio-knob id="Knob2"  step="0.1" log=false style="position:absolute;left:136px;top:90px" src="img/Prophet.png" value="5" min="0" max="10" diameter="69" sprites="99" tooltip="Treble"></webaudio-knob>
         <webaudio-knob id="Knob3"   log=false style="position:absolute;left:207px;top:90px" src="img/Prophet.png" value="0" step="0.1" min="0" max="10" diameter="69" sprites="99" tooltip="Bass"></webaudio-knob>
@@ -254,6 +253,7 @@
         <select style="position:absolute;left:455px;top:190px" id="impulses">
         </select>
         <webaudio-knob id="Knob8"   log=false style="position:absolute;left:557px;top:90px" src="img/Prophet.png" value="0" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Presence"></webaudio-knob>
+      </div>
         <webaudio-slider id="slider1" style="position:absolute;left:731px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" tooltip="Slider1"></webaudio-slider>
         <webaudio-slider id="slider2" Units="Db" style="position:absolute;left:774px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100"  tooltip="Slider2"></webaudio-slider>
         <webaudio-slider id="slider3" Units="Db" style="position:absolute;left:819px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" tooltip="Slider3"></webaudio-slider>

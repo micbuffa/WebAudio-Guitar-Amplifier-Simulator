@@ -275,6 +275,7 @@ function Amp(context) {
     // Master volume
     var masterVolume = context.createGain();
 
+/*
     reverb = new Reverb(context, function () {
         console.log("reverb created");
 
@@ -285,8 +286,11 @@ function Amp(context) {
 
         });
     });
+*/
 
-
+    reverb = new Reverb(context);
+cabinetSim = new CabinetSimulator(context);
+doAllConnections();
     // -------------------
     // END OF AMP STAGES
     // -------------------
@@ -550,6 +554,19 @@ function Amp(context) {
         var scale = (maxv - minv) / (maxp - minp);
 
         return (minp + (Math.log(logValue) - minv) / scale)/150;
+    }
+
+    function changeOversampling(cb) {
+        for (var i = 0; i < 4; i++) {
+            if(cb.checked) {
+                // Oversampling generates some (small) latency
+                od[i].oversample = '4x';
+                console.log("set oversampling to 4x");
+            } else {
+                od[i].oversample = 'none';
+                console.log("set oversampling to none");
+            }
+         }
     }
 
     // Returns an array of distorsions values in [0, 10] range
@@ -1044,6 +1061,7 @@ function Amp(context) {
         changePresenceFilterValue : changePresenceFilterValue,
         changeDrive: changeDrive,
         changeDistorsionValues: changeDistorsionValues,
+        changeOversampling: changeOversampling,
         changeQValues: changeQValues,
         changeFreqValues: changeFreqValues,
         changeOutputGain: changeOutputGain,
@@ -1062,12 +1080,11 @@ function Amp(context) {
 
 // ------- REVERB -------------------
 
-function Reverb(context, cb) {
+function Reverb(context) {
     var convolverNode, convolverGain, directGain;
     // create source and gain node
     var inputGain = context.createGain();
     var outputGain = context.createGain();
-    var call = cb;
     var decodedImpulse;
 
     var defaultImpulseURL = "assets/impulses/reverb/cardiod-rear-levelled.wav";
@@ -1100,48 +1117,20 @@ function Reverb(context, cb) {
     directGain.gain.value = 1;
 
     buildIRsMenu();
+    buildAudioGraphConvolver();
+    setGain(0.2);
 
-    // Load default impulse and build graph
-    loadImpulse(defaultImpulseURL, function () {
-        // we get here only when the impulse has finished
-        // loading
+    // Load default impulse
+    const samples = Promise.all([loadSample(context,defaultImpulseURL)]).then(setImpulse);
+
+    function setImpulse(param) {
+     // we get here only when the impulse is loaded and decoded
         console.log("impulse chargée et décodée");
-        convolverNode.buffer = decodedImpulse;
+        convolverNode.buffer = param[0];
         console.log("convolverNode.buffer changé avec la nouvelle impulse décodée");
-
-        buildAudioGraphConvolver();
-        setGain(0.2);
-        call();
-    });
-
-    // ---------------------
-
-    function loadImpulse(url, callback) {
-        var ajaxRequest = new XMLHttpRequest();
-        ajaxRequest.open('GET', url, true);
-        ajaxRequest.responseType = 'arraybuffer';
-
-        ajaxRequest.onload = function () {
-            var impulseData = ajaxRequest.response;
-            console.log("got impulse, trying to decode it");
-            context.decodeAudioData(impulseData, function (buffer) {
-                console.log("reverb impulse decoded");
-                decodedImpulse = buffer;
-                callback();
-            });
-        };
-
-        ajaxRequest.onerror = function (e) {
-            console.log("Error when loading and/or decoding impulse" + e.err);
-        };
-
-        ajaxRequest.send();
     }
 
     function buildAudioGraphConvolver() {
-
-
-
         // direct/dry route source -> directGain -> destination
         inputGain.connect(directGain);
         directGain.connect(outputGain);
@@ -1172,13 +1161,9 @@ function Reverb(context, cb) {
         var url = IRs[menuIRs.value].url;
 
         console.log("loading " + url);
-        loadImpulse(url, function () {
-            console.log("impulse chargée et décodée");
-            convolverNode.buffer = decodedImpulse;
-            console.log("convolverNode.buffer changé avec la nouvelle impulse décodée");
-        });
-
+        const samples = Promise.all([loadSample(context,url)]).then(setImpulse);
     }
+
     function buildIRsMenu() {
         menuIRs = document.querySelector("#impulses");
 
@@ -1205,14 +1190,13 @@ function Reverb(context, cb) {
 // CABINET simulator, very similar to reverb
 // ------- CABINET SIMULATOR -------------------
 
-function CabinetSimulator(context, cb) {
+function CabinetSimulator(context) {
     var convolverNode, convolverGain, directGain;
     // create source and gain node
     var inputGain = context.createGain();
     var outputGain = context.createGain();
 
     var decodedImpulse;
-    var call = cb;
 
     var defaultImpulseURL = "assets/impulses/cabinet/Block%20Inside.wav";
     var ir1 = "assets/impulses/cabinet/voxCustomBrightM930OnAxis1.wav";
@@ -1250,44 +1234,22 @@ function CabinetSimulator(context, cb) {
 
 
     buildIRsMenu();
+    buildAudioGraphConvolver();
+    setGain(0.2);
 
-    // Load default impulse and build graph
-    loadImpulse(defaultImpulseURL, function () {
-        // we get here only when the impulse has finished
-        // loading
-        convolverNode.buffer = decodedImpulse;
-        buildAudioGraphConvolver();
-        setGain(0.2);
-        call();
-    });
+    // Load default impulse
+    const samples = Promise.all([loadSample(context,defaultImpulseURL)]).then(setImpulse);
+
+    function setImpulse(param) {
+     // we get here only when the impulse is loaded and decoded
+        console.log("impulse chargée et décodée");
+        convolverNode.buffer = param[0];
+        console.log("convolverNode.buffer changé avec la nouvelle impulse décodée");
+    }
 
     // ---------------------
 
-    function loadImpulse(url, callback) {
-        var ajaxRequest = new XMLHttpRequest();
-        ajaxRequest.open('GET', url, true);
-        ajaxRequest.responseType = 'arraybuffer';
-
-        ajaxRequest.onload = function () {
-            var impulseData = ajaxRequest.response;
-            console.log("Cab got impulse, trying to decode it");
-            context.decodeAudioData(impulseData, function (buffer) {
-                console.log("cab impulse decoded");
-                decodedImpulse = buffer;
-                callback();
-            });
-        };
-
-        ajaxRequest.onerror = function (e) {
-            console.log("Error when loading and/or decoding impulse" + e.err);
-        };
-
-        ajaxRequest.send();
-    }
-
     function buildAudioGraphConvolver() {
-
-
         // direct/dry route source -> directGain -> destination
         inputGain.connect(directGain);
         directGain.connect(outputGain);
@@ -1318,13 +1280,9 @@ function CabinetSimulator(context, cb) {
         var url = IRs[menuIRs.value].url;
 
         console.log("loading " + url);
-        loadImpulse(url, function () {
-            console.log("Cab impulse chargée et décodée");
-            convolverNode.buffer = decodedImpulse;
-            console.log("Cab convolverNode.buffer changé avec la nouvelle impulse décodée");
-        });
-
+        const samples = Promise.all([loadSample(context,url)]).then(setImpulse);
     }
+
     function buildIRsMenu() {
         menuIRs = document.querySelector("#impulsesCabinet");
 

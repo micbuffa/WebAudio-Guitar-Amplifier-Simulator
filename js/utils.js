@@ -16,3 +16,20 @@ function sign(x) {
     }
 }
 
+// Loads a sample and decode it using ES6 new syntax
+// returns a promise
+function loadSample(audioContext, url){
+          console.log('done');
+    return new Promise(function(resolve, reject){
+        fetch(url)
+        .then((response) => {
+            return response.arrayBuffer();
+        })
+        .then((buffer) =>{
+            audioContext.decodeAudioData(buffer, (decodedAudioData) =>{
+                resolve(decodedAudioData);
+            });
+        });
+    });
+}
+
