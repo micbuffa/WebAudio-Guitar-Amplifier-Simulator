@@ -288,9 +288,10 @@ function Amp(context) {
     });
 */
 
-    reverb = new Reverb(context);
-cabinetSim = new CabinetSimulator(context);
-doAllConnections();
+    reverb = new Convolver(context, reverbImpulses, "reverbImpulses");
+    cabinetSim = new Convolver(context, cabinetImpulses, "cabinetImpulses");
+    doAllConnections();
+
     // -------------------
     // END OF AMP STAGES
     // -------------------
@@ -567,6 +568,10 @@ doAllConnections();
                 console.log("set oversampling to none");
             }
          }
+         // Not sure if this is necessary... My ears can't hear the difference
+         // between oversampling=node and 4x ? Maybe we should re-init the
+         // waveshaper curves ?
+         changeDistoType();
     }
 
     // Returns an array of distorsions values in [0, 10] range
@@ -682,7 +687,7 @@ doAllConnections();
         knob.setValue(parseFloat(sliderVal).toFixed(1), false);
     }
 
-    function changeReverb(sliderVal) {
+    function changeReverbGain(sliderVal) {
         // slider val in [0, 10] range
         // adjust to [0, 1]
         var value = parseFloat(sliderVal) / 10;
@@ -701,6 +706,10 @@ doAllConnections();
         knob.setValue(parseFloat(sliderVal).toFixed(1), false);
     }
 
+    function changeReverbImpulse(name) {
+        reverb.loadImpulseByName(name);
+    }
+
     function changeRoom(sliderVal) {
         // slider val in [0, 10] range
         // adjust to [0, 1]
@@ -716,6 +725,10 @@ doAllConnections();
         var slider = document.querySelector("#convolverCabinetSlider");
         slider.value = parseFloat(sliderVal).toFixed(1);
 
+    }
+
+    function changeCabinetSimImpulse(name) {
+        cabinetSim.loadImpulseByName(name);
     }
 
     function changeEQValues(eqValues) {
@@ -894,6 +907,9 @@ doAllConnections();
         preset20 = {"name":"Noisy 2","distoName":"NoisyHiGain","LCF":289,"HCF":8720,"K1":"5.1","K2":"3.7","K3":"5.0","K4":"5.0","F1":91,"F2":548,"F3":1820,"F4":4535,"Q1":"4.3","Q2":"0.5","Q3":"0.3","Q4":"2.8","OG":"6.7","BF":"8.1","MF":"7.3","TF":"3.2","PF":"6.1","EQ":[9,-10,3,10,4,-17],"MV":"3.5","RG":"3.7","CG":"8.5"}
         presets.push(preset20);
 
+        preset21 = {"name":"test2","distoName":"standard","LCF":200,"HCF":12000,"K1":"0.9","K2":"0.9","K3":"1.8","K4":"1.8","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.0","Q2":"49.0","Q3":"42.0","Q4":"11.0","OG":"5.0","BF":"5.0","MF":"5.0","TF":"5.0","PF":"5.0","EQ":[-2,-1,0,3,1,3],"MV":"5.8","RN":"Scala de Milan","RG":"2.0","CN":"Marshall 1960, axis","CG":"2.0"};
+        presets.push(preset21);
+
         presets.forEach(function (p, index) {
             var option = document.createElement("option");
             option.value = index;
@@ -939,8 +955,11 @@ doAllConnections();
 
         changeMasterVolume(p.MV);
 
-        changeReverb(p.RG);
+        changeReverbGain(p.RG);
+        changeReverbImpulse(p.RN);
+
         changeRoom(p.CG);
+        changeCabinetSimImpulse(p.CN);
 
         changeEQValues(p.EQ);
 
@@ -981,7 +1000,9 @@ doAllConnections();
             PF: ((presenceFilter.gain.value / 2) + 5).toFixed(1), // presenceFilter.gain.value = (value-5) * 2;
             EQ: eq.getValues(),
             MV: masterVolume.gain.value.toFixed(1),
+            RN: reverb.getName(),
             RG: (reverb.getGain()*10).toFixed(1),
+            CN: cabinetSim.getName(),
             CG: (cabinetSim.getGain()*10).toFixed(1)
        };
 
@@ -1066,7 +1087,7 @@ doAllConnections();
         changeFreqValues: changeFreqValues,
         changeOutputGain: changeOutputGain,
         changeMasterVolume: changeMasterVolume,
-        changeReverb: changeReverb,
+        changeReverbGain: changeReverbGain,
         changeRoom: changeRoom,
         changeEQValues: changeEQValues,
         setDefaultPreset: setDefaultPreset,
@@ -1078,56 +1099,112 @@ doAllConnections();
     };
 }
 
-// ------- REVERB -------------------
-
-function Reverb(context) {
+var reverbImpulses = [
+        {
+            name: "Fender Hot Rod",
+            url: "assets/impulses/reverb/cardiod-rear-levelled.wav"
+        },
+        {
+            name: "PCM 90 clean plate",
+            url: "assets/impulses/reverb/pcm90cleanplate.wav"
+        },
+        {
+            name: "Scala de Milan",
+            url: "assets/impulses/reverb/ScalaMilanOperaHall.wav"
+        }
+    ];
+var cabinetImpulses = [
+        {
+            name: "Vintage Marshall 1",
+            url: "assets/impulses/cabinet/Block%20Inside.wav"
+        },
+        {
+            name: "Vox Custom Bright 4x12 M930 Axis 1",
+            url: "assets/impulses/cabinet/voxCustomBrightM930OnAxis1.wav"
+        },
+        {
+            name: "Fender Champ, axis",
+            url: "assets/impulses/cabinet/FenderChampAxisStereo.wav"
+        },
+        {
+            name: "Marshall 1960, axis",
+            url: "assets/impulses/cabinet/Marshall1960.wav"
+        }    
+    ];
+// ------- CONVOLVER, used for both reverb and cabinet simulation -------------------
+function Convolver(context, impulses, menuId) {
     var convolverNode, convolverGain, directGain;
     // create source and gain node
     var inputGain = context.createGain();
     var outputGain = context.createGain();
     var decodedImpulse;
 
-    var defaultImpulseURL = "assets/impulses/reverb/cardiod-rear-levelled.wav";
+    var irDefaultURL = "assets/impulses/reverb/cardiod-rear-levelled.wav";
     var ir1 = "assets/impulses/reverb/pcm90cleanplate.wav";
     var ir2 = "assets/impulses/reverb/ScalaMilanOperaHall.wav";
 
     var menuIRs;
-    var IRs = [
-        {
-            name: "Fender Hot Rod",
-            url: defaultImpulseURL
-        },
-        {
-            name: "PCM 90 clean plate",
-            url: ir1
-        },
-        {
-            name: "Scala de Milan",
-            url: ir2
+    var IRs = impulses;
+
+    var currentImpulse = IRs[0];
+    var defaultImpulseURL = IRs[0].url;
+
+    convolverNode = context.createConvolver();
+    convolverNode.buffer = decodedImpulse;
+
+    convolverGain = context.createGain();
+    convolverGain.gain.value = 0;
+
+    directGain = context.createGain();
+    directGain.gain.value = 1;
+
+    buildIRsMenu(menuId);
+    buildAudioGraphConvolver();
+    setGain(0.2);
+    loadImpulseByUrl(defaultImpulseURL);
+    
+
+    function loadImpulseByUrl(url) {
+        // Load default impulse
+        const samples = Promise.all([loadSample(context,url)]).then(setImpulse);
+    }
+
+    function loadImpulseByName(name) {
+        if(name === undefined) {
+            name = IRs[0].name;
+            console.log("loadImpulseByName: name undefined, loading default impulse " + name);
         }
-    ];
 
-    convolverNode = context.createConvolver();
-    convolverNode.buffer = decodedImpulse;
+        var url="none";
+        // get url corresponding to name
+        for(var i=0; i < IRs.length; i++) {
+            if(IRs[i].name === name) {
+                url = IRs[i].url;
+                currentImpulse = IRs[i];
+                menuIRs.value = i;
+                break;
+            }
+        }
+        if(url === "none") {
+            console.log("ERROR loading reverb impulse name = " + name);
+        } else {
+            console.log("loadImpulseByName loading " + currentImpulse.name);
+            loadImpulseByUrl(url);
+        }
+    }
 
-    convolverGain = context.createGain();
-    convolverGain.gain.value = 0;
-
-    directGain = context.createGain();
-    directGain.gain.value = 1;
-
-    buildIRsMenu();
-    buildAudioGraphConvolver();
-    setGain(0.2);
-
-    // Load default impulse
-    const samples = Promise.all([loadSample(context,defaultImpulseURL)]).then(setImpulse);
+    function loadImpulseFromMenu() {
+        var url = IRs[menuIRs.value].url;
+        currentImpulse = IRs[menuIRs.value];
+        console.log("loadImpulseFromMenu loading " + currentImpulse.name);
+        loadImpulseByUrl(url);
+    }
 
     function setImpulse(param) {
      // we get here only when the impulse is loaded and decoded
-        console.log("impulse chargée et décodée");
+        console.log("impulse loaded and decoded");
         convolverNode.buffer = param[0];
-        console.log("convolverNode.buffer changé avec la nouvelle impulse décodée");
+        console.log("convolverNode.buffer set with the new impulse (loaded and decoded");
     }
 
     function buildAudioGraphConvolver() {
@@ -1154,18 +1231,13 @@ function Reverb(context) {
         return 2 * Math.acos(directGain.gain.value) / Math.PI;
     }
 
-    function loadImpulseUsingAjax() {
-        var impulseName = IRs[menuIRs.value];
-        //var url = "http://mainline.i3s.unice.fr/reverbIR/" + impulseName;
-
-        var url = IRs[menuIRs.value].url;
-
-        console.log("loading " + url);
-        const samples = Promise.all([loadSample(context,url)]).then(setImpulse);
+    function getName() {
+        return currentImpulse.name;
     }
 
-    function buildIRsMenu() {
-        menuIRs = document.querySelector("#impulses");
+
+    function buildIRsMenu(menuId) {
+        menuIRs = document.querySelector("#" + menuId);
 
         IRs.forEach(function (impulse, index) {
             var option = document.createElement("option");
@@ -1174,7 +1246,7 @@ function Reverb(context) {
             menuIRs.appendChild(option);
         });
 
-        menuIRs.oninput = loadImpulseUsingAjax;
+        menuIRs.oninput = loadImpulseFromMenu;
     }
     //--------------------------------------
     // API : exposed methods and properties
@@ -1183,125 +1255,8 @@ function Reverb(context) {
         input: inputGain,
         output: outputGain,
         setGain: setGain,
-        getGain: getGain
-    };
-}
-
-// CABINET simulator, very similar to reverb
-// ------- CABINET SIMULATOR -------------------
-
-function CabinetSimulator(context) {
-    var convolverNode, convolverGain, directGain;
-    // create source and gain node
-    var inputGain = context.createGain();
-    var outputGain = context.createGain();
-
-    var decodedImpulse;
-
-    var defaultImpulseURL = "assets/impulses/cabinet/Block%20Inside.wav";
-    var ir1 = "assets/impulses/cabinet/voxCustomBrightM930OnAxis1.wav";
-    var ir4 = "assets/impulses/cabinet/FenderChampAxisStereo.wav";
-    var ir5 = "assets/impulses/cabinet/Marshall1960.wav";
- 
-    var menuIRs;
-    var IRs = [
-        {
-            name: "Vintage Marshall 1",
-            url: defaultImpulseURL
-        },
-        {
-            name: "Vox Custom Bright 4x12 M930 Axis 1",
-            url: ir1
-        },
-        {
-            name: "Fender Champ, axis",
-            url: ir4
-        },
-        {
-            name: "Marshall 1960, axis",
-            url: ir5
-        }    
-    ];
-
-    convolverNode = context.createConvolver();
-    convolverNode.buffer = decodedImpulse;
-
-    convolverGain = context.createGain();
-    convolverGain.gain.value = 0;
-
-    directGain = context.createGain();
-    directGain.gain.value = 1;
-
-
-    buildIRsMenu();
-    buildAudioGraphConvolver();
-    setGain(0.2);
-
-    // Load default impulse
-    const samples = Promise.all([loadSample(context,defaultImpulseURL)]).then(setImpulse);
-
-    function setImpulse(param) {
-     // we get here only when the impulse is loaded and decoded
-        console.log("impulse chargée et décodée");
-        convolverNode.buffer = param[0];
-        console.log("convolverNode.buffer changé avec la nouvelle impulse décodée");
-    }
-
-    // ---------------------
-
-    function buildAudioGraphConvolver() {
-        // direct/dry route source -> directGain -> destination
-        inputGain.connect(directGain);
-        directGain.connect(outputGain);
-
-        // wet route with convolver: source -> convolver 
-        // -> convolverGain -> destination
-        inputGain.connect(convolverNode);
-        convolverNode.connect(convolverGain);
-        convolverGain.connect(outputGain);
-    }
-
-    function setGain(value) {
-        var v1 = Math.cos(value * Math.PI / 2);
-        var v2 = Math.cos((1 - value) * Math.PI / 2);
-
-        directGain.gain.value = v1;
-        convolverGain.gain.value = v2;
-    }
-
-    function getGain() {
-        return 2 * Math.acos(directGain.gain.value) / Math.PI;
-    }
-
-    function loadImpulseUsingAjax() {
-        var impulseName = IRs[menuIRs.value];
-        //var url = "http://mainline.i3s.unice.fr/reverbIR/" + impulseName;
-
-        var url = IRs[menuIRs.value].url;
-
-        console.log("loading " + url);
-        const samples = Promise.all([loadSample(context,url)]).then(setImpulse);
-    }
-
-    function buildIRsMenu() {
-        menuIRs = document.querySelector("#impulsesCabinet");
-
-        IRs.forEach(function (impulse, index) {
-            var option = document.createElement("option");
-            option.value = index;
-            option.text = impulse.name;
-            menuIRs.appendChild(option);
-        });
-
-        menuIRs.oninput = loadImpulseUsingAjax;
-    }
-    //--------------------------------------
-    // API : exposed methods and properties
-    // -------------------------------------
-    return {
-        input: inputGain,
-        output: outputGain,
-        setGain: setGain,
-        getGain: getGain
+        getGain: getGain,
+        getName:getName,
+        loadImpulseByName: loadImpulseByName
     };
 }
