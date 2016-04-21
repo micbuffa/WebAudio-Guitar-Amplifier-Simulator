@@ -165,6 +165,10 @@
                     <div>
                         <webaudio-knob id="Knob1"   step="0.1" log=false style="position:absolute;left:66px;top:90px" src="img/Prophet.png" value="0"  min="0" max="10" diameter="69" sprites="99" tooltip="Volume" ></webaudio-knob>
                         <webaudio-knob id="Knob2"  step="0.1" log=false style="position:absolute;left:136px;top:90px" src="img/Prophet.png" value="5" min="0" max="10" diameter="69" sprites="99" tooltip="Treble"></webaudio-knob>
+                        <!-- boost button -->
+                        <label style="color:white;position:absolute;left:70px;top:60px">Channel Clean / Disto : </label>
+                        <webaudio-switch style="color:white; position:absolute;left:225px;top:58px" id="toggleBoost" value="0" src="img/led.png" tooltip="Toggle clean/disto channel"></webaudio-switch>
+                        <!-- drive knob -->
                         <webaudio-knob id="Knob3"   log=false style="position:absolute;left:207px;top:90px" src="img/Prophet.png" value="0" step="0.1" min="0" max="10" diameter="69" sprites="99" tooltip="Bass"></webaudio-knob>
                         <select style="position:absolute;left:190px;top:190px"  id="distorsionMenu">
                         </select>
@@ -183,9 +187,9 @@
                     <webaudio-slider id="slider5" Units="Db" style="position:absolute;left:908px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" tooltip="Slider5"></webaudio-slider>
                     <webaudio-slider id="slider6" Units="Db" style="position:absolute;left:951px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" units="%" tooltip="Slider6"></webaudio-slider>      
                     <webaudio-switch id="switch1"  style="position:absolute;left:1033px;top:72px" src="img/switch_toggle.png" value="0" height="45" width="45" tooltip="Switch-A Tooltip text test"></webaudio-switch>
-                    <webaudio-switch id="led" style="position:absolute;left:1048px;top:125px" src="img/led_23_red.png" value="1" height="23" width="23" tooltip="Switch-B"></webaudio-switch>
+                    <webaudio-switch id="led" style="position:absolute;left:1043px;top:125px" src="img/led_23_red.png" value="1" height="23" width="23" tooltip="Switch-B"></webaudio-switch>
                     <webaudio-switch id="switch2" style="position:absolute;left:1033px;top:140px" src="img/switch_toggle.png" value="0" height="45" width="45" tooltip="Switch-B"></webaudio-switch>
-                    <button  style="position:absolute;left:570px;top:270px" type="button" onclick="showCurrentSettings()">Show current settings in console</button>
+                    <button  style="position:absolute;left:570px;top:270px" type="button" onclick="amp.printCurrentAmpValues();">Show current settings in console</button>
                     <button  id="toggleGuitarIn" style="position:absolute;left:570px;top:300px" class="pulse"  type="button" onclick="toggleGuitarInput(event)">Guitar input: <span style='color:red;'>NOT ACTIVATED</span>, click to toggle on/off!</button>
                     <webaudio-knob id="Knob9"   log=false style="position:absolute;left:570px;top:350px" src="img/Prophet.png" value="1" default="1" min="0" max="10" step="0.1" diameter="49" sprites="99" tooltip="InputGain"></webaudio-knob>
 
@@ -207,7 +211,6 @@
                     </div>
             </section>
         </article>
-
 
         <div class="events" id="events" style="background:rgba(128,128,255,0.5);overflow:scroll"></div>
 
@@ -310,6 +313,16 @@
                 amp.bypassEQ(state);
             });
 
+            var boostOnOff = document.querySelector("#toggleBoost");
+            boostOnOff.addEventListener("change", function (evt) {
+                var state = {};
+                if (evt.target.value == 1) {
+                    state.checked = false;
+                } else {
+                    state.checked = true;
+                }
+                amp.boostOnOff(state);
+            });
 
         </script>
 

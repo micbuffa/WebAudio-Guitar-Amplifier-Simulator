@@ -182,6 +182,9 @@ function Amp(context) {
     // ------------
     // PREAM STAGE
     // ------------
+    // Channel booster
+    var boost = new Boost(context);
+
     // Main input and output and bypass
     var input = context.createGain();
     var output = context.createGain();
@@ -290,6 +293,7 @@ function Amp(context) {
 
     reverb = new Convolver(context, reverbImpulses, "reverbImpulses");
     cabinetSim = new Convolver(context, cabinetImpulses, "cabinetImpulses");
+
     doAllConnections();
 
     // -------------------
@@ -313,7 +317,11 @@ function Amp(context) {
         input.connect(inputGain);
         input.connect(byPass);
 
-        inputGain.connect(lowCutFilter);
+        // boost is not activated, it's just a sort of disto at 
+        // the very beginning of the amp route
+        inputGain.connect(boost.input);
+
+        boost.output.connect(lowCutFilter);
         lowCutFilter.connect(hiCutFilter);
 
         for (var i = 0; i < 4; i++) {
@@ -348,6 +356,29 @@ function Amp(context) {
         byPass.connect(output);
     }
 
+    function boostOnOff(cb) {        
+        boost.toggle();
+        updateBoostLedButtonState(boost.isActivated());
+    }
+
+    function updateBoostLedButtonState(activated) {
+        // update buttons states
+        var boostSwitch = document.querySelector("#toggleBoost");
+
+        if(boost.isActivated()) {
+            boostSwitch.setValue(1,false);
+        } else {
+            boostSwitch.setValue(0,false);
+        }
+    }
+
+    function changeBoost(state) {
+        boost.onOff(state);
+        updateBoostLedButtonState(boost.isActivated());
+
+        console.log("changeBoost, boost now: " + boost.isActivated());
+
+    }
     function changeInputGainValue(sliderVal) {
         input.gain.value = parseFloat(sliderVal);
     }
@@ -910,6 +941,9 @@ function Amp(context) {
         preset21 = {"name":"test2","distoName":"standard","LCF":200,"HCF":12000,"K1":"0.9","K2":"0.9","K3":"1.8","K4":"1.8","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.0","Q2":"49.0","Q3":"42.0","Q4":"11.0","OG":"5.0","BF":"5.0","MF":"5.0","TF":"5.0","PF":"5.0","EQ":[-2,-1,0,3,1,3],"MV":"5.8","RN":"Scala de Milan","RG":"2.0","CN":"Marshall 1960, axis","CG":"2.0"};
         presets.push(preset21);
 
+        preset22 = {"name":"test3boost","distoName":"standard","boost":true,"LCF":90,"HCF":7000,"K1":"5.0","K2":"5.0","K3":"10.0","K4":"10.0","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.0","Q2":"49.0","Q3":"42.0","Q4":"11.0","OG":"7.9","BF":"5.0","MF":"5.0","TF":"5.0","PF":"5.0","EQ":[-2,-1,2,2,-7,-13],"MV":"0.7","RN":"Fender Hot Rod","RG":"2.0","CN":"Vintage Marshall 1","CG":"5.4"};
+        presets.push(preset22);
+
         presets.forEach(function (p, index) {
             var option = document.createElement("option");
             option.value = index;
@@ -927,6 +961,8 @@ function Amp(context) {
         if(p.distoName === undefined) {
             p.distoName = "standard";
         }
+
+        changeBoost(p.boost);
 
         changeLowCutFreqValue(p.LCF);
         changeHicutFreqValue(p.HCF);
@@ -979,6 +1015,7 @@ function Amp(context) {
         var currentPresetValue = {
             name: 'current',
             distoName : currentDistoName,
+            boost: boost.isActivated(),
             LCF: lowCutFilter.frequency.value,
             HCF: hiCutFilter.frequency.value,
             K1: getDistorsionValue(0),
@@ -1069,6 +1106,7 @@ function Amp(context) {
     return {
         input: input,
         output: output,
+        boostOnOff:boostOnOff,
         eq: eq,
         reverb: reverb,
         cabinet: cabinetSim,
@@ -1260,3 +1298,81 @@ function Convolver(context, impulses, menuId) {
         loadImpulseByName: loadImpulseByName
     };
 }
+
+// Booster, useful to add a "Boost channel"
+var Boost = function(context) {
+    // Booster not activated by default
+    var activated = false;
+
+    var input = context.createGain();
+    var inputGain = context.createGain();
+    inputGain.gain.value = 0;
+    var byPass = context.createGain();
+    byPass.gain.value = 1;
+    var filter = context.createBiquadFilter();
+    filter.frequency.value = 3317;
+    var shaper = context.createWaveShaper();
+    shaper.curve = makeDistortionCurve(640);
+    var outputGain = context.createGain();
+    outputGain.gain.value = 2.09;
+    var output = context.createGain();
+
+    // build graph
+    input.connect(inputGain);
+    inputGain.connect(shaper);
+    shaper.connect(filter);
+    filter.connect(outputGain);
+    outputGain.connect(output);
+
+    // bypass route
+    input.connect(byPass);
+    byPass.connect(output);
+
+    function isActivated() {
+        return activated;
+    }
+
+    function onOff(wantedState) {
+        if(wantedState === undefined) {
+            // do not boost
+            if(activated) toggle();
+            return;
+        }
+        var currentState = activated;
+
+        if(wantedState !== currentState) {
+            toggle();
+        }
+    }
+
+    function toggle() {
+        if(!activated) {
+            byPass.gain.value = 0;
+            inputGain.gain.value = 1;
+        } else {
+            byPass.gain.value = 1;
+            inputGain.gain.value = 0;
+        }
+        activated = !activated;
+    }
+
+    function makeDistortionCurve(k) {
+        var n_samples = 44100; //65536; //22050;     //44100
+        var curve = new Float32Array(n_samples);
+        var deg = Math.PI / 180;
+        for (var i = 0; i < n_samples; i += 1) {
+            var x = i * 2 / n_samples - 1;
+            curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+        }
+        return curve;
+    }
+    // API
+    return {
+        input:input,
+        output:output,
+        onOff: onOff,
+        toggle:toggle,
+        isActivated: isActivated
+    };
+};
+ 
