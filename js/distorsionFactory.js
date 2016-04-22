@@ -4,7 +4,7 @@ function WaveShapers() {
     buildDistorsionFactories();
 
     function buildDistorsionFactories() {
-        // all distorsion values in [0, 10]
+        // all distorsion values in [0, 1500]
 
         // classic curve from WebAudio specification
         distorsionCurves.standard = function (distorsionValue) {
@@ -17,6 +17,8 @@ function WaveShapers() {
         distorsionCurves.standardLower = function (distorsionValue) {
             var k = distorsionValue;
             var c = classicDistorsion2(k);
+
+            //var c1 = scaleCurve(c, 2, 2);
             return c;
         };
 
@@ -48,8 +50,8 @@ function WaveShapers() {
             asymetric(kTuna, 44100, c);
             return c;
         };
+        
         */
-
         distorsionCurves.notSoDistorded = function (distorsionValue) {
             var k = distorsionValue / 150;
             var c = notSoDistorded(k);
@@ -252,6 +254,7 @@ function WaveShapers() {
         return c;
     }
     // END OF WAVE SHAPING FUNCTIONS
+
 
     // API
     return {
