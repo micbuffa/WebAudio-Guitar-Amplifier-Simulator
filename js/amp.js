@@ -356,9 +356,39 @@ function Amp(context) {
         byPass.connect(output);
     }
 
-    function boostOnOff(cb) {        
+    function boostOnOff(cb) {  
+        // called when we click the switch on the GUI      
         boost.toggle();
+
+        adjustOutputGainIfBoostActivated();
         updateBoostLedButtonState(boost.isActivated());
+    }
+
+    function changeBoost(state) {
+        console.log("changeBoost, boost before: " + boost.isActivated() + " output gain=" + output.gain.value );
+
+        if(boost.isActivated() !== state) {
+            // we need to adjust the output gain
+            console.log("changeBoost: we change boost state");
+            boost.onOff(state);
+            adjustOutputGainIfBoostActivated();
+            updateBoostLedButtonState(boost.isActivated());
+        } else {
+            console.log("changeBoost: we do not change boost state");
+        }
+
+        console.log("changeBoost, boost after: " + boost.isActivated());
+    }
+
+    function adjustOutputGainIfBoostActivated() {
+        console.log("adjustOutputGainIfBoostActivated: output gain value before = " + output.gain.value)
+
+        if(boost.isActivated()) {
+            output.gain.value /= 2;
+        } else {
+            output.gain.value *= 2;
+        }
+        console.log("adjustOutputGainIfBoostActivated: output gain value after = " + output.gain.value)
     }
 
     function updateBoostLedButtonState(activated) {
@@ -372,19 +402,14 @@ function Amp(context) {
         }
     }
 
-    function changeBoost(state) {
-        boost.onOff(state);
-        updateBoostLedButtonState(boost.isActivated());
 
-        console.log("changeBoost, boost now: " + boost.isActivated());
-
-    }
     function changeInputGainValue(sliderVal) {
         input.gain.value = parseFloat(sliderVal);
     }
 
     function changeOutputGainValue(sliderVal) {
         output.gain.value = parseFloat(sliderVal)/10;
+        console.log("changeOutputGainValue value = " + output.gain.value);
     }
 
 
@@ -593,9 +618,11 @@ function Amp(context) {
             if(cb.checked) {
                 // Oversampling generates some (small) latency
                 od[i].oversample = '4x';
+                boost.setOversampling('4x');
                 console.log("set oversampling to 4x");
             } else {
                 od[i].oversample = 'none';
+                 boost.setOversampling('none');
                 console.log("set oversampling to none");
             }
          }
@@ -777,32 +804,7 @@ function Amp(context) {
     // --------
     function initPresets() {
         // updated 10/4/2016
-        preset1 = {
-            "name":"Clean 1",
-            "LCF":200,
-            "HCF":12000,
-            "K1":0.9,
-            "K2":0.9,
-            "K3":1.8,
-            "K4":1.8,
-            "F1":147,
-            "F2":569,
-            "F3":1915,
-            "F4":4680,
-            "Q1":0,
-            "Q2":49,
-            "Q3":42,
-            "Q4":11,
-            "OG":5,
-            "BF":5,
-            "MF":5,
-            "TF":5,
-            "PF":5,
-            "EQ":[-2,-1,0,3,1,3],
-            "MV":"5.8",
-            "RG":"2.0",
-            "CG":"2.0"
-        }
+        preset1 = {"name":"Clean 1","distoName":"standard","boost":false,"LCF":200,"HCF":12000,"K1":"0.0","K2":"0.0","K3":"0.0","K4":"0.0","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.0","Q2":"49.0","Q3":"42.0","Q4":"11.0","OG":"5.0","BF":"5.0","MF":"4.2","TF":"3.1","PF":"5.0","EQ":[-2,-1,0,3,-9,-4],"MV":"5.8","RN":"Fender Hot Rod","RG":"2.0","CN":"Vintage Marshall 1","CG":"2.0"};
         presets.push(preset1);
 
         preset2 = {
@@ -899,7 +901,7 @@ function Amp(context) {
         preset7 = {"name":"MW 1","LCF":10,"HCF":7000,"K1":"5.0","K2":"8.5","K3":"10.0","K4":"2.0","F1":186,"F2":792,"F3":2402,"F4":6368,"Q1":16,"Q2":1,"Q3":1,"Q4":5,"OG":"0.4","BF":"6.0","MF":"2.4","TF":"3.7","PF":"2.6","EQ":[14,18,-5,3,13,25],"MV":"9.9","RG":"2.9","CG":"8.9"};
         presets.push(preset7);
 
-        preset8 = {"name":"Marshall Hells Bells","LCF":157,"HCF":17716,"K1":"5.0","K2":"5.0","K3":"3.8","K4":"3.8","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":0.10000000149011612,"Q2":0.6000000238418579,"Q3":1.100000023841858,"Q4":0.10000000149011612,"OG":"4.5","BF":"5.0","MF":"5.0","TF":"5.0","PF":"5.0","EQ":[14,8,0,3,14,3],"MV":"1.7","RG":"2.0","CG":"2.0"}
+        preset8 = {"name":"Hells Bells","distoName":"standard","boost":false,"LCF":157,"HCF":17716,"K1":"2.5","K2":"2.5","K3":"5.0","K4":"5.0","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.1","Q2":"0.6","Q3":"1.1","Q4":"0.1","OG":"4.5","BF":"5.0","MF":"5.0","TF":"5.0","PF":"5.0","EQ":[14,8,0,3,14,3],"MV":"0.5","RN":"Fender Hot Rod","RG":"2.0","CN":"Vintage Marshall 1","CG":"2.0"}
         presets.push(preset8);
 
         preset9 = {"name":"Smoke on the Water","LCF":298,"HCF":8703,"K1":"9.6","K2":"9.6","K3":"9.6","K4":"9.6","F1":300,"F2":1058,"F3":2297,"F4":7000,"Q1":2.5,"Q2":2,"Q3":0.6000000238418579,"Q4":0.4000000059604645,"OG":"4.5","BF":"4.0","MF":"8.5","TF":"3.8","PF":"3.1","EQ":[14,19,-7,-12,19,16],"MV":"1.8","RG":"1.6","CG":"10.0"};
@@ -938,10 +940,10 @@ function Amp(context) {
         preset20 = {"name":"Noisy 2","distoName":"NoisyHiGain","LCF":289,"HCF":8720,"K1":"5.1","K2":"3.7","K3":"5.0","K4":"5.0","F1":91,"F2":548,"F3":1820,"F4":4535,"Q1":"4.3","Q2":"0.5","Q3":"0.3","Q4":"2.8","OG":"6.7","BF":"8.1","MF":"7.3","TF":"3.2","PF":"6.1","EQ":[9,-10,3,10,4,-17],"MV":"3.5","RG":"3.7","CG":"8.5"}
         presets.push(preset20);
 
-        preset21 = {"name":"test2","distoName":"standard","LCF":200,"HCF":12000,"K1":"0.9","K2":"0.9","K3":"1.8","K4":"1.8","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.0","Q2":"49.0","Q3":"42.0","Q4":"11.0","OG":"5.0","BF":"5.0","MF":"5.0","TF":"5.0","PF":"5.0","EQ":[-2,-1,0,3,1,3],"MV":"5.8","RN":"Scala de Milan","RG":"2.0","CN":"Marshall 1960, axis","CG":"2.0"};
+        preset21 = {"name":"Highway to Hell","distoName":"fuzz","boost":true,"LCF":214,"HCF":15820,"K1":"0.9","K2":"0.3","K3":"4.2","K4":"1.3","F1":83,"F2":838,"F3":1694,"F4":5782,"Q1":"2.9","Q2":"1.7","Q3":"2.7","Q4":"1.0","OG":"0.8","BF":"4.8","MF":"6.0","TF":"5.9","PF":"8.9","EQ":[15,16,19,-2,17,-3],"MV":"2.1","RN":"Fender Hot Rod","RG":"0.0","CN":"Vintage Marshall 1","CG":"6.0"};
         presets.push(preset21);
 
-        preset22 = {"name":"test3boost","distoName":"standard","boost":true,"LCF":90,"HCF":7000,"K1":"5.0","K2":"5.0","K3":"10.0","K4":"10.0","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.0","Q2":"49.0","Q3":"42.0","Q4":"11.0","OG":"7.9","BF":"5.0","MF":"5.0","TF":"5.0","PF":"5.0","EQ":[-2,-1,2,2,-7,-13],"MV":"0.7","RN":"Fender Hot Rod","RG":"2.0","CN":"Vintage Marshall 1","CG":"5.4"};
+        preset22 = {"name":"Love RnRoll","distoName":"smooth","boost":true,"LCF":214,"HCF":15820,"K1":"3.8","K2":"3.8","K3":"7.5","K4":"7.5","F1":186,"F2":792,"F3":2402,"F4":4836,"Q1":"2.9","Q2":"0.7","Q3":"1.0","Q4":"1.0","OG":"0.8","BF":"4.8","MF":"6.0","TF":"5.9","PF":"8.9","EQ":[15,19,19,-2,17,-3],"MV":"2.1","RN":"Fender Hot Rod","RG":"1.2","CN":"Vintage Marshall 1","CG":"7.4"};
         presets.push(preset22);
 
         presets.forEach(function (p, index) {
@@ -962,6 +964,7 @@ function Amp(context) {
             p.distoName = "standard";
         }
 
+        if(p.boost === undefined) p.boost = false;
         changeBoost(p.boost);
 
         changeLowCutFreqValue(p.LCF);
@@ -1314,7 +1317,7 @@ var Boost = function(context) {
     var shaper = context.createWaveShaper();
     shaper.curve = makeDistortionCurve(640);
     var outputGain = context.createGain();
-    outputGain.gain.value = 2.09;
+    outputGain.gain.value = 2;
     var output = context.createGain();
 
     // build graph
@@ -1356,6 +1359,11 @@ var Boost = function(context) {
         activated = !activated;
     }
 
+    function setOversampling(value) {
+        shaper.oversample = value;
+        console.log("boost set oversampling to " + value);
+    }
+
     function makeDistortionCurve(k) {
         var n_samples = 44100; //65536; //22050;     //44100
         var curve = new Float32Array(n_samples);
@@ -1372,7 +1380,8 @@ var Boost = function(context) {
         output:output,
         onOff: onOff,
         toggle:toggle,
-        isActivated: isActivated
+        isActivated: isActivated,
+        setOversampling: setOversampling
     };
 };
  
