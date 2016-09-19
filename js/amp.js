@@ -1,15 +1,28 @@
 
 
 // INITS
-var mediaElement, input2;
+var audioPlayer, input2;
+var demoSampleURLs = [
+  "assets/audio/Guitar_DI_Track.mp3",
+  "assets/audio/LasseMagoDI.mp3",
+  "assets/audio/RawPRRI.mp3",
+  "assets/audio/Di-Guitar.mp3",
+  "assets/audio/NarcosynthesisDI.mp3",
+  "assets/audio/BlackSabbathNIB_rythmDI.mp3",
+  "assets/audio/BlackSabbathNIBLead_DI.mp3",
+  "assets/audio/BasketCase Greenday riff DI.mp3",
+  "assets/audio/InBloomNirvanaRiff1DI.mp3",
+  "assets/audio/Muse1Solo.mp3",
+  "assets/audio/Muse2Rythm.mp3"
+];
 
 
 function gotStream() {
     // Create an AudioNode from the stream.
-    mediaElement = document.getElementById('player');
+    audioPlayer = document.getElementById('player');
 
     if(input2 === undefined) {
-        input2 = audioContext.createMediaElementSource(mediaElement);
+        input2 = audioContext.createMediaElementSource(audioPlayer);
     }
 
     var input = audioContext.createMediaStreamSource(window.stream);
@@ -17,6 +30,12 @@ function gotStream() {
 
     createAmp(audioContext, audioInput, input2);
     console.log('AMP CREATED')
+}
+
+function changeDemoSample(val) {
+    console.log(val);
+  audioPlayer.src = demoSampleURLs[val];
+  audioPlayer.play();
 }
 
 var amp;

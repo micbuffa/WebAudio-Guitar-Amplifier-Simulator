@@ -39,7 +39,7 @@
         </div>
 
 
-        <h2>Guitar amp emulation made with the Web Audio API</h2>
+        <h2>Guitar amp emulation made with the Web Audio API:  : <a href="../AmpSim3">TRY NEW VERSION HERE!</h2>
         <p>Author: Michel Buffa (@micbuffa), GUI with the help of Mahdi Wartani.</p>
         <p><a href="https://github.com/micbuffa/WebAudio-Guitar-Amplifier-Simulator/blob/master/README.md" target="_blank">You may visit the GitHub repo.</a></p>
         <p><b>You need Google Chrome (the app should support soon other browsers) + don't forget to set the default input in your OS preferences. If you plugged a guitar in, then press the pulsing button in the middle of the Amp to activate it. Otherwise you can try the amp with the audio player on the left, press play and use the preset menu or the buttons/sliders.</b></p>
@@ -55,10 +55,30 @@
 
                     <p>Press play to preview presets</p>
                     <audio id="player" controls  loop>
-                        <source src="assets/audio/g_t_120_30.mp3">
-
+                        <source src="assets/audio/BasketCase Greenday riff DI.mp3">
+                        <source src="assets/audio/BasketCase Greenday riff DI.ogg">
                         Your browser does not support the audio tag.
                     </audio>
+                    <div id="demoSample">Choose a demo sample: 
+                        <select id="demoSampleMenu" onchange="changeDemoSample(this.value);">
+                          <option value="0">Metal riff 1</option>
+                          <option value="1">Metal riff 2</option>
+                          <!--
+                          <option value="2">Blues solo 1</option>
+                      -->
+                          <option value="3">Cool rythm</option>
+                          <option value="4">Trash metal</option>
+                          <option value="5">Black Sabbath Rythm</option>
+                          <option value="6">Black Sabbath Solo</option>
+                          <option value="7">Basketcase Riff</option>
+                          <option value="8">In Bloom riff</option>
+                          <option value="9">Muse solo</option>
+                          <option value="10">Muse rythm</option>
+                          <!--
+                          <option value="11">Simple guitar riff</option>
+                            -->
+                        </select>
+                    </div>
 
                     <p>Low and high cut frequencies</p>
                     <div class="controls">
