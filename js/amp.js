@@ -20,6 +20,16 @@ var demoSampleURLs = [
 function gotStream() {
     // Create an AudioNode from the stream.
     audioPlayer = document.getElementById('player');
+    try {
+        // if ShadowDOMPolyfill is defined, then we are using the Polymer
+        // WebComponent polyfill that wraps the HTML audio
+        // element into something that cannot be used with
+        // createMediaElementSource. We use ShadowDOMPolyfill.unwrap(...)
+        // to get the "real" HTML audio element
+        audioPlayer = ShadowDOMPolyfill.unwrap(audioPlayer);
+    } catch(e) {
+        console.log("ShadowDOMPolyfill undefined, running native Web Component code");
+    }
 
     if(input2 === undefined) {
         input2 = audioContext.createMediaElementSource(audioPlayer);
