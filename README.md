@@ -10,9 +10,9 @@ The GUI uses the Web Audio Controls web components by g200Kg.
 How to use?
 -----------
 
-For the moment, you need Google Chrome or FF Nightly.
+For the moment, you need Google Chrome or FF Nightly or Opera.
 
-The Amp has been tested with a Mac Book Pro and different sound cards (Apogee Jam, different Presonus and RMEs) and works in real time with a very low latency (8-12ms). The latency is system and sound card dependent, so you've got to try. Windows with an asio sound card should work. On Linux Jack is uspported by FireFox Nightly I guess, people told me it worked with low latency.
+The Amp has been tested with a Mac Book Pro and different sound cards (Apogee Jam, different Presonus and RMEs) and works in real time with a very low latency (8-12ms). The latency is system and sound card dependent, so you've got to try. On Windows the web browsers only support WASAPI drivers, giving a minimul latency of 10ms, add to this the latency of the amp and you are around 14ms, not so good. FF should support Jack for Windows soon. On Linux Jack is uspported by FireFox Nightly, people told me it worked with low latency.
 
 You can try the Amp Sim without a guitar, just go to https://mainline.i3s.unice.fr/AmpSim, wait until the eq sliders come up (that
 means that the reverb and cabinet simulator impulses have been loaded and decoded), and press the play button of the audio player on
