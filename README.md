@@ -1,8 +1,6 @@
 # WebAudio-Guitar-Amplifier-Simulator
 A Guitar Amplifier Simulator written using the Web Audio API
 
-This is a guitar amplifier re-created using the WebAudio API. 
-
 ![Web Audio AMp Simulator](http://i.imgur.com/WhImffj.jpg)
 
 The GUI uses the Web Audio Controls web components by g200Kg.
