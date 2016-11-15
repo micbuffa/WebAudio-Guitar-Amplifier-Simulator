@@ -1,6 +1,9 @@
 # WebAudio-Guitar-Amplifier-Simulator
 A Guitar Amplifier Simulator written using the Web Audio API
 
+New version with a different design (preamp from JCM800 Marshall Amp): https://github.com/micbuffa/WebAudio-Guitar-Amplifier-Simulator-3
+The version here uses a 100% custom design of the preamp, that produces better clean sounds but worse crunch/distorded sounds.
+
 ![Web Audio AMp Simulator](http://i.imgur.com/WhImffj.jpg)
 
 The GUI uses the Web Audio Controls web components by g200Kg.
