@@ -8,7 +8,7 @@ var app = express()
   , server = http.createServer(app)
 
 // launch the http server on given port
-server.listen(8082);
+server.listen(8084);
 
 // Indicate where static files are located. Without this, no external js file, no css...  
 
@@ -20,3 +20,4 @@ app.get('/', function (req, res) {
   res.sendfile(__dirname + '/index.html');
 });
 
+console.log("listeneing to port 8084");

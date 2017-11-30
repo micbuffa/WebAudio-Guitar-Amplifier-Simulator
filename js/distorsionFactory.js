@@ -43,7 +43,7 @@ function WaveShapers() {
             return c;
         };
 
-        /*
+        
         distorsionCurves.asymetric = function (distorsionValue) {
             var c = new Float32Array(44100);
             var kTuna = distorsionValue / 1500;
@@ -51,7 +51,14 @@ function WaveShapers() {
             return c;
         };
         
-        */
+                // classic curve from WebAudio specification
+        distorsionCurves.bezier = function (distorsionValue) {
+            var k = distorsionValue;
+            var c = getBezierCurve();
+            return c;
+        };
+
+
         distorsionCurves.notSoDistorded = function (distorsionValue) {
             var k = distorsionValue / 150;
             var c = notSoDistorded(k);
@@ -253,6 +260,53 @@ function WaveShapers() {
         }
         return c;
     }
+
+    //  - BEZIER FOR ASYMETRIC CURVE...
+// var p0 = {x: 0, y: 100}; //use whatever points you want obviously
+// var p1 = {x: 50, y: 100}; // tan
+// var p2 = {x: 50, y: 0}; // tan
+// var p3 = {x: 100, y: 0};
+
+
+
+function bezier(t, p0, p1, p2, p3){
+    var cX = 3 * (p1.x - p0.x),
+        bX = 3 * (p2.x - p1.x) - cX,
+        aX = p3.x - p0.x - cX - bX;
+            
+    var cY = 3 * (p1.y - p0.y),
+        bY = 3 * (p2.y - p1.y) - cY,
+        aY = p3.y - p0.y - cY - bY;
+            
+    var x = (aX * Math.pow(t, 3)) + 
+              (bX * Math.pow(t, 2)) + (cX * t) + p0.x;
+    var y = (aY * Math.pow(t, 3)) + 
+              (bY * Math.pow(t, 2)) + (cY * t) + p0.y;
+            
+    return {x: x, y: y};
+} 
+
+function getBezierCurve() {
+    var p0 = {x: 0, y: 100};
+var p1 = {x: 10, y: 50};
+var p2 = {x: 0, y: 50};
+var p3 = {x: 100, y: 0};
+
+   var n_samples = 44100,
+   accuracy = 1/n_samples,
+   curve = new Float32Array(n_samples),
+   index = 0;
+  
+  curve[index++] = map(p0.y, 0, 100, 1, -1);
+  
+  // 
+  for (var i=0; i<1; i+=accuracy){
+    var p = bezier(i, p0, p1, p2, p3);
+    curve[index++] = map(p.y, 0, 100, 1, -1);
+  }
+  
+  return curve;
+}  
     // END OF WAVE SHAPING FUNCTIONS
 
 

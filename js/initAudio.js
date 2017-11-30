@@ -2,7 +2,7 @@ window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
 var audioContext = new AudioContext();
 
-window.addEventListener('load', start);
+window.addEventListener('load', startWithFirefoxComaptibility /*start*/);
 
 function convertToMono(input) {
     var splitter = audioContext.createChannelSplitter(2);
@@ -95,7 +95,20 @@ function start() {
     //.catch(errorCallback);
 }
 
+function startWithFirefoxComaptibility() {
+    var constraints = { 
+       audio: {
+            echoCancellation: false, mozNoiseSuppression: false, mozAutoGainControl: false  
+       } 
+   };
 
+    navigator.mediaDevices.getUserMedia(constraints)
+            .then(function (stream) {
+                window.stream = stream; // make stream available to console
+                // Refresh button list in case labels have become available
+            })
+            .then(gotStream);
+}
 
 function gotDevices(deviceInfos) {
     // Handles being called several times to update labels. Preserve values.

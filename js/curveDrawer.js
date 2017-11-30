@@ -68,7 +68,7 @@ function CurveDrawer(canvasId) {
   this.setCurve = function(c) {
     for (var i=0; i < this.width; i++) {
       var x = Math.round(i*c.length/this.width);
-      console.log();
+      //console.log();
         this.curve[i] = c[x];
     }
   };

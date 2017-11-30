@@ -1,15 +1,39 @@
 
 
 // INITS
-var mediaElement, input2;
+var audioPlayer, input2;
+var demoSampleURLs = [
+  "assets/audio/Guitar_DI_Track.mp3",
+  "assets/audio/LasseMagoDI.mp3",
+  "assets/audio/RawPRRI.mp3",
+  "assets/audio/Di-Guitar.mp3",
+  "assets/audio/NarcosynthesisDI.mp3",
+  "assets/audio/BlackSabbathNIB_rythmDI.mp3",
+  "assets/audio/BlackSabbathNIBLead_DI.mp3",
+  "assets/audio/BasketCase Greenday riff DI.mp3",
+  "assets/audio/InBloomNirvanaRiff1DI.mp3",
+  "assets/audio/Muse1Solo.mp3",
+  "assets/audio/Muse2Rythm.mp3"
+];
 
 
 function gotStream() {
     // Create an AudioNode from the stream.
-    mediaElement = document.getElementById('player');
+    audioPlayer = document.getElementById('player');
+    try {
+        // if ShadowDOMPolyfill is defined, then we are using the Polymer
+        // WebComponent polyfill that wraps the HTML audio
+        // element into something that cannot be used with
+        // createMediaElementSource. We use ShadowDOMPolyfill.unwrap(...)
+        // to get the "real" HTML audio element
+        audioPlayer = ShadowDOMPolyfill.unwrap(audioPlayer);
+    } catch(e) {
+        console.log("ShadowDOMPolyfill undefined, running native Web Component code");
+    }
 
+    
     if(input2 === undefined) {
-        input2 = audioContext.createMediaElementSource(mediaElement);
+        input2 = audioContext.createMediaElementSource(audioPlayer);
     }
 
     var input = audioContext.createMediaStreamSource(window.stream);
@@ -17,6 +41,13 @@ function gotStream() {
 
     createAmp(audioContext, audioInput, input2);
     console.log('AMP CREATED')
+}
+
+
+function changeDemoSample(val) {
+    console.log(val);
+  audioPlayer.src = demoSampleURLs[val];
+  audioPlayer.play();
 }
 
 var amp;
@@ -97,6 +128,7 @@ function Equalizer(ctx) {
     var filters = [];
 
     // Set filters
+    // Fred: 80 for the low end. 10000 useless, use shelf instead...
     [60, 170, 350, 1000, 3500, 10000].forEach(function (freq, i) {
         var eq = ctx.createBiquadFilter();
         eq.frequency.value = freq;
@@ -163,21 +195,23 @@ function Equalizer(ctx) {
 function Amp(context) {
     var presets = [];
     var menuPresets = document.querySelector("#QFPresetMenu2");
-    var menuDisto = document.querySelector("#distorsionMenu");
+    var menuDisto1 = document.querySelector("#distorsionMenu1");
+    var menuDisto2 = document.querySelector("#distorsionMenu2");
     // for the waveshapers from the preamp
     var wsFactory = new WaveShapers();
-    buildDistoMenu();
+    buildDistoMenu1();
+    buildDistoMenu2();
 
     var currentDistoName = "standard";
     var currentK = 2; // we have separates ks, but also a "global" one that
-                      // is the max of the four (the knob value)
+                      // is the max of the two (the knob value)
     var currentWSCurve = wsFactory.distorsionCurves[currentDistoName](currentK);
     // for Wave Shaper Curves visualization
-    var distoDrawer, signalDrawer;
     var DRAWER_CANVAS_SIZE = 100;
-    var distoDrawer = new CurveDrawer("distoDrawerCanvas");
-    var signalDrawer = new CurveDrawer("signalDrawerCanvas");
-    drawCurrentDisto();
+    var distoDrawer1 = new CurveDrawer("distoDrawerCanvas1");
+    var signalDrawer1 = new CurveDrawer("signalDrawerCanvas1");
+    var distoDrawer2 = new CurveDrawer("distoDrawerCanvas2");
+    var signalDrawer2 = new CurveDrawer("signalDrawerCanvas2");
 
     // ------------
     // PREAM STAGE
@@ -195,44 +229,34 @@ function Amp(context) {
     var inputGain = context.createGain();
     inputGain.gain.value = 1;
 
-    // low and high cut filters
-    var lowCutFilter = context.createBiquadFilter();
-    lowCutFilter.type = "highpass";
-    lowCutFilter.frequency.value = 20;
-
-    var hiCutFilter = context.createBiquadFilter();
-    hiCutFilter.type = "lowpass";
-    hiCutFilter.frequency.value = 12000;
-
-
-    // band filters for quadrafuzz like circuitry
-    var filters = [];
-    var lowpassLeft = context.createBiquadFilter();
-    lowpassLeft.frequency.value = 147;
-    lowpassLeft.type = "lowpass";
-    filters[0] = lowpassLeft;
-
-    var bandpass1Left = context.createBiquadFilter();
-    bandpass1Left.frequency.value = 587;
-    bandpass1Left.type = "bandpass";
-    filters[1] = bandpass1Left;
-
-    var bandpass2Left = context.createBiquadFilter();
-    bandpass2Left.frequency.value = 2490;
-    bandpass2Left.type = "bandpass";
-    filters[2] = bandpass2Left;
-
-    var highpassLeft = context.createBiquadFilter();
-    highpassLeft.frequency.value = 4980;
-    highpassLeft.type = "highpass";
-    filters[3] = highpassLeft;
+    // tonestack
+    var bassFilter, midFilter, trebleFilter, presenceFilter;
 
     // overdrives
     var k = [2, 2, 2, 2]; // array of k initial values
     var od = [];
+    var distoTypes = ['asymetric', 'standard'];
+
     var gainsOds = [];
-// noprotect  
+
+    // Tonestack in serie, cf Lepou's mail  
+    /*
     for (var i = 0; i < 4; i++) {
+        loCutFilters[i] = context.createBiquadFilter();
+        loCutFilters[i].type = "lowshelf";
+        loCutFilters[i].frequency.value = 720;
+        loCutFilters[i].gain.value = 3.3;
+
+        hiCutFilters[i] = context.createBiquadFilter();
+        hiCutFilters[i].type = "lowpass";
+        hiCutFilters[i].frequency.value = 12000;
+        hiCutFilters[i].Q.value = 0.7071;
+
+        highShelfBoosts[i] = context.createBiquadFilter();
+        highShelfBoosts[i].type = "highshelf";
+        highShelfBoosts[i].frequency.value = 12000; // Which values ?
+        highShelfBoosts[i].Q.value = 0.7071;        // Which values ?
+
         od[i] = context.createWaveShaper();
         od[i].curve = makeDistortionCurve(k[i]);
         // Oversampling generates some (small) latency
@@ -243,33 +267,104 @@ function Amp(context) {
         gainsOds[i].gain.value = 1;
     }
 
-    // output gain after amp stage
+    */
+   
+    // JCM 800 preamp schematic...
+    //
+    // Low shelf cut -6db à 720Hz
+    var lowShelf1 = context.createBiquadFilter();
+    lowShelf1.type = "lowshelf";
+    lowShelf1.frequency.value = 720;
+    lowShelf1.gain.value = -6;
+
+    // Low shelf cut variable wired to volume knob
+    // if vol = 50%, then filter at -6db, 320Hz
+    // shoud go from -4db to -6db for +/- fatness
+    var lowShelf2 = context.createBiquadFilter();
+    lowShelf2.type = "lowshelf";    
+    lowShelf2.frequency.value = 320;
+    lowShelf2.gain.value = -5;
+
+    // Gain 1
+    var preampStage1Gain = context.createGain();
+    preampStage1Gain.gain.value = 1.0;
+
+    // Distorsion 1, here we should use an asymetric function in order to 
+    // generate odd harmonics
+    od[0] = context.createWaveShaper();
+    od[0].curve =  wsFactory.distorsionCurves[distoTypes[0]](0);
+    menuDisto1.value = distoTypes[0];
+
+    // HighPass at 7-8 Hz, rectify the signal that got a DC value due
+    // to the possible asymetric transfer function
+    var highPass1 = context.createBiquadFilter();
+    highPass1.type = "highpass";    
+    highPass1.frequency.value = 6;
+    highPass1.Q.value = 0.7071;
+
+    // lowshelf cut -6db 720Hz
+    var lowShelf3 = context.createBiquadFilter();
+    lowShelf3.type = "lowshelf";    
+    lowShelf3.frequency.value = 720;
+    lowShelf3.gain.value = -6;
+
+    // Gain 2
+    var preampStage2Gain = context.createGain();
+    preampStage2Gain.gain.value = 1;
+
+    // Distorsion 2, symetric function to generate even harmonics
+    od[1] = context.createWaveShaper();
+    od[1].curve = wsFactory.distorsionCurves[distoTypes[1]](0);
+    menuDisto2.value = distoTypes[1];
+
+    changeDistorsionValues(4, 0);
+    changeDistorsionValues(4, 1);
+
+    // output gain after preamp stage
     var outputGain = context.createGain();
-    outputGain.gain.value = 1;
+    changeOutputGainValue(7);
 
     // ------------------------------
-    // POWER AMP AND TONESTACK STAGES
+    // TONESTACK STAGES
     // ------------------------------
+    // Useless ?
     var bassFilter = context.createBiquadFilter();
     bassFilter.frequency.value = 100;
     bassFilter.type = "lowshelf";
+    bassFilter.Q.value = 0.7071; // To check with Lepou
 
     var midFilter = context.createBiquadFilter();
     midFilter.frequency.value = 1700;
     midFilter.type = "peaking";
+    midFilter.Q.value = 0.7071; // To check with Lepou
 
     var trebleFilter = context.createBiquadFilter();
     trebleFilter.frequency.value = 6500;
     trebleFilter.type = "highshelf";
+    trebleFilter.Q.value = 0.7071; // To check with Lepou
 
     var presenceFilter = context.createBiquadFilter();
     presenceFilter.frequency.value = 3900;
     presenceFilter.type = "peaking";
+    presenceFilter.Q.value = 0.7071; // To check with Lepou
 
     // -----------------------------------
     // POST PROCESSING STAGE (EQ, reverb)
     // -----------------------------------
+    //  before EQ, filter highs and lows (Fred Miniere advise)
+    var eqhicut = context.createBiquadFilter();
+        eqhicut.frequency.value = 10000;
+        eqhicut.type = "peaking";
+        eqhicut.gain.value = -25;
+
+    var eqlocut = context.createBiquadFilter();
+        eqlocut.frequency.value = 60;
+        eqlocut.type = "peaking";
+        eqlocut.gain.value = -19;
+
+    
     var eq = new Equalizer(context);
+    changeEQValues([0, 0, 0, 0, 0, 0]);
     var bypassEQg = context.createGain();
     bypassEQg.gain.value = 0; // by defaut EQ is in
     var inputEQ = context.createGain();
@@ -277,7 +372,7 @@ function Amp(context) {
     var cabinetSim, reverb;
     // Master volume
     var masterVolume = context.createGain();
-
+    changeMasterVolume(2);
 /*
     reverb = new Reverb(context, function () {
         console.log("reverb created");
@@ -306,6 +401,7 @@ function Amp(context) {
 
         // Build web audio graph, set default preset
         buildGraph();
+        changeRoom(7.5); // TO REMOVE ONCE PRESETS MANAGER WORKS
         initPresets();
 
         setDefaultPreset();
@@ -320,29 +416,43 @@ function Amp(context) {
         // boost is not activated, it's just a sort of disto at 
         // the very beginning of the amp route
         inputGain.connect(boost.input);
+        // JCM 800 like...
+        
+        boost.output.connect(lowShelf1);
+        lowShelf1.connect(lowShelf2);
+        lowShelf2.connect(preampStage1Gain);
+        preampStage1Gain.connect(od[0]);
+        od[0].connect(highPass1);
+        highPass1.connect(lowShelf3);
 
-        boost.output.connect(lowCutFilter);
-        lowCutFilter.connect(hiCutFilter);
+        lowShelf3.connect(preampStage2Gain);
+        preampStage2Gain.connect(od[1])
 
-        for (var i = 0; i < 4; i++) {
-            hiCutFilter.connect(filters[i]);
-            filters[i].connect(od[i]);
-            od[i].connect(gainsOds[i]);
-            gainsOds[i].connect(outputGain);
-        }
+        // end of preamp
+
+        od[1].connect(outputGain);
+
+
         // tonestack
-        outputGain.connect(bassFilter);
+        outputGain.connect(trebleFilter );
+        trebleFilter.connect(bassFilter);
         bassFilter.connect(midFilter);
-        midFilter.connect(trebleFilter);
-        trebleFilter.connect(presenceFilter);
+        midFilter.connect(presenceFilter);
+
+        // lo and hicuts
+        presenceFilter.connect(eqlocut);
+        eqlocut.connect(eqhicut);
+
 
         // post process
-        presenceFilter.connect(inputEQ);
+        eqhicut.connect(inputEQ);
+
         // bypass eq route
-        presenceFilter.connect(bypassEQg);
+        eqhicut.connect(bypassEQg);
         bypassEQg.connect(masterVolume);
 
         // normal route
+        
         inputEQ.connect(eq.input);
         eq.output.connect(masterVolume);
         masterVolume.connect(reverb.input);
@@ -412,24 +522,146 @@ function Amp(context) {
         console.log("changeOutputGainValue value = " + output.gain.value);
     }
 
+    // PREAMP
 
-    function changeLowCutFreqValue(sliderVal) {
+    function changeLowShelf1FrequencyValue(sliderVal) {
         var value = parseFloat(sliderVal);
-        lowCutFilter.frequency.value = value;
+        lowShelf1.frequency.value = value;
 
         // update output labels
-        var output = document.querySelector("#lowCutFreq");
+        var output = document.querySelector("#lowShelf1Freq");
         output.value = parseFloat(sliderVal).toFixed(1) + " Hz";
 
         // refresh slider state
-        var slider = document.querySelector("#lowCutFreqSlider");
+        var slider = document.querySelector("#lowShelf1FreqSlider");
         slider.value = parseFloat(sliderVal).toFixed(1);
     }
 
+    function changeLowShelf1GainValue(sliderVal) {
+        var value = parseFloat(sliderVal);
+        lowShelf1.gain.value = value;
+
+        // update output labels
+        var output = document.querySelector("#lowShelf1Gain");
+        output.value = parseFloat(sliderVal).toFixed(1) + " dB";
+
+        // refresh slider state
+        var slider = document.querySelector("#lowShelf1GainSlider");
+        slider.value = parseFloat(sliderVal).toFixed(1);
+    }
+
+    function changeLowShelf2FrequencyValue(sliderVal) {
+        var value = parseFloat(sliderVal);
+        lowShelf2.frequency.value = value;
+
+        // update output labels
+        var output = document.querySelector("#lowShelf2Freq");
+        output.value = parseFloat(sliderVal).toFixed(1) + " Hz";
+
+        // refresh slider state
+        var slider = document.querySelector("#lowShelf2FreqSlider");
+        slider.value = parseFloat(sliderVal).toFixed(1);
+    }
+
+    function changeLowShelf2GainValue(sliderVal) {
+        var value = parseFloat(sliderVal);
+        lowShelf2.gain.value = value;
+
+        console.log("lowshelf 2 gain = " + value);
+        // update output labels
+        var output = document.querySelector("#lowShelf2Gain");
+        output.value = parseFloat(sliderVal).toFixed(1) + " dB";
+
+        // refresh slider state
+        var slider = document.querySelector("#lowShelf2GainSlider");
+        slider.value = parseFloat(sliderVal).toFixed(1);
+    }
+
+    function changePreampStage1GainValue(sliderVal) {
+        var value = parseFloat(sliderVal);
+        preampStage1Gain.gain.value = value;
+
+        // update output labels
+        var output = document.querySelector("#preampStage1Gain");
+        output.value = parseFloat(sliderVal).toFixed(2);
+
+        // refresh slider state
+        var slider = document.querySelector("#preampStage1GainSlider");
+        slider.value = parseFloat(sliderVal).toFixed(2);
+    }
+
+    function changeHighPass1FrequencyValue(sliderVal) {
+        var value = parseFloat(sliderVal);
+        highPass1.frequency.value = value;
+
+        // update output labels
+        var output = document.querySelector("#highPass1Freq");
+        output.value = parseFloat(sliderVal).toFixed(1) + " Hz";
+
+        // refresh slider state
+        var slider = document.querySelector("#highPass1FreqSlider");
+        slider.value = parseFloat(sliderVal).toFixed(1);
+    }
+
+    function changeHighPass1QValue(sliderVal) {
+        var value = parseFloat(sliderVal);
+        highPass1.Q.value = value;
+
+        // update output labels
+        var output = document.querySelector("#highPass1Q");
+        output.value = parseFloat(sliderVal).toFixed(4);
+
+        // refresh slider state
+        var slider = document.querySelector("#highPass1QSlider");
+        slider.value = parseFloat(sliderVal).toFixed(4);
+    }
+
+    function changeLowShelf3FrequencyValue(sliderVal) {
+        var value = parseFloat(sliderVal);
+        lowShelf3.frequency.value = value;
+
+        // update output labels
+        var output = document.querySelector("#lowShelf3Freq");
+        output.value = parseFloat(sliderVal).toFixed(1) + " Hz";
+
+        // refresh slider state
+        var slider = document.querySelector("#lowShelf3FreqSlider");
+        slider.value = parseFloat(sliderVal).toFixed(1);
+    }
+
+    function changeLowShelf3GainValue(sliderVal) {
+        var value = parseFloat(sliderVal);
+        lowShelf3.gain.value = value;
+
+        // update output labels
+        var output = document.querySelector("#lowShelf3Gain");
+        output.value = parseFloat(sliderVal).toFixed(1) + " dB";
+
+        // refresh slider state
+        var slider = document.querySelector("#lowShelf3GainSlider");
+        slider.value = parseFloat(sliderVal).toFixed(1);
+    }
+
+    function changePreampStage2GainValue(sliderVal) {
+        var value = parseFloat(sliderVal);
+        preampStage2Gain.gain.value = value;
+
+        // update output labels
+        var output = document.querySelector("#preampStage2Gain");
+        output.value = parseFloat(sliderVal).toFixed(2);
+
+        // refresh slider state
+        var slider = document.querySelector("#preampStage2GainSlider");
+        slider.value = parseFloat(sliderVal).toFixed(2);
+    }
+
+    // END OF PREAMP
+
     function changeHicutFreqValue(sliderVal) {
         var value = parseFloat(sliderVal);
-        hiCutFilter.frequency.value = value;
-
+        for(var i =0; i < 4; i++) {
+            hiCutFilters[i].frequency.value = value;
+    }
         // update output labels
         var output = document.querySelector("#hiCutFreq");
         output.value = parseFloat(sliderVal).toFixed(1) + " Hz";
@@ -442,7 +674,7 @@ function Amp(context) {
   function changeBassFilterValue(sliderVal) {
         // sliderVal is in [0, 10]
         var value = parseFloat(sliderVal);
-        bassFilter.gain.value = (value-5) * 3;
+        bassFilter.gain.value = (value-10) * 7;
         console.log("bass gain set to " + bassFilter.gain.value);
 
         // update output labels
@@ -454,6 +686,7 @@ function Amp(context) {
         //slider.value = parseFloat(sliderVal).toFixed(1);
 
         // refresh knob state
+        //sliderVal = value / 7 + 10;
         var knob = document.querySelector("#Knob4");
         knob.setValue(parseFloat(sliderVal).toFixed(1), false);
     }
@@ -461,7 +694,7 @@ function Amp(context) {
     function changeMidFilterValue(sliderVal) {
         // sliderVal is in [0, 10]
         var value = parseFloat(sliderVal);
-        midFilter.gain.value = (value-5) * 2;
+        midFilter.gain.value = (value-5) * 4;
 
         // update output labels
         //var output = document.querySelector("#midFreq");
@@ -472,6 +705,7 @@ function Amp(context) {
         //slider.value = parseFloat(sliderVal).toFixed(1);
 
         // refresh knob state
+         //sliderVal = value /4 + 5;
         var knob = document.querySelector("#Knob5");
         knob.setValue(parseFloat(sliderVal).toFixed(1), false);
     }
@@ -479,7 +713,7 @@ function Amp(context) {
     function changeTrebleFilterValue(sliderVal) {
         // sliderVal is in [0, 10]
         var value = parseFloat(sliderVal);
-        trebleFilter.gain.value = (value-5) * 5;
+        trebleFilter.gain.value = (value-10) * 10;
 
         // update output labels
         //var output = document.querySelector("#trebleFreq");
@@ -490,6 +724,7 @@ function Amp(context) {
         //slider.value = parseFloat(sliderVal).toFixed(1);
 
         // refresh knob state
+        //sliderVal = value /10 + 10;
         var knob = document.querySelector("#Knob6");
         knob.setValue(parseFloat(sliderVal).toFixed(1), false);
     }
@@ -514,26 +749,52 @@ function Amp(context) {
     }
 
     // Build a drop down menu with all distorsion names
-    function buildDistoMenu() {
+    function buildDistoMenu1() {
         for(var p in wsFactory.distorsionCurves) {
             var option = document.createElement("option");
             option.value = p;
             option.text = p;
-            menuDisto.appendChild(option);    
+            menuDisto1.appendChild(option);    
         }
-        menuDisto.onchange = changeDistoType;
+        menuDisto1.onchange = changeDistoType1;
+    }
+    // Build a drop down menu with all distorsion names
+    function buildDistoMenu2() {
+        for(var p in wsFactory.distorsionCurves) {
+            var option = document.createElement("option");
+            option.value = p;
+            option.text = p;
+            menuDisto2.appendChild(option);    
+        }
+        menuDisto2.onchange = changeDistoType2;
     }
 
-    function changeDistoType() {
-        console.log("Changing disto to : " + menuDisto.value);
-        currentDistoName = menuDisto.value;      
+    function changeDistoType1() {
+        console.log("Changing disto1 to : " + menuDisto1.value);
+        currentDistoName = menuDisto1.value;   
+        distoTypes[0] = currentDistoName;
         changeDrive(currentK);
     }
 
-    function changeDistoTypeFromPreset(name) {
+    function changeDistoType2() {
+        console.log("Changing disto2 to : " + menuDisto2.value);
+        currentDistoName = menuDisto2.value;   
+        distoTypes[1] = currentDistoName;
+        changeDrive(currentK);
+    }
+
+    function changeDisto1TypeFromPreset(name) {
         currentDistoName = name;
-        menuDisto.value = name;
-        changeDrive(currentK);
+        menuDisto1.value = name;
+        distoTypes[0] = currentDistoName;
+        //changeDrive(currentK);
+    }
+
+    function changeDisto2TypeFromPreset(name) {
+        currentDistoName = name;
+        menuDisto2.value = name;
+        distoTypes[1] = currentDistoName;
+        //changeDrive(currentK);
     }
 
     function changeDrive(sliderValue) {
@@ -541,18 +802,11 @@ function Amp(context) {
       // We can imagine having some "profiles here" -> generate
       // different K values from one single sliderValue for the
       // drive.
-      var profileValues = [1, 1, 1, 1];
       // other values i.e [0.5, 0.5, 0.8, 1] -> less distorsion
       // on bass frequencies and top high frequency
       
-      for(var i = 0; i < 4; i++) {
-        // less distorsion on bass channels
-        if(i < 2) {
-            changeDistorsionValues(sliderValue/2, i);
-        } else {
+      for(var i = 0; i < 2; i++) {
             changeDistorsionValues(sliderValue, i);
-        }
-        
       }
     }
 
@@ -574,7 +828,11 @@ function Amp(context) {
 
         k[numDisto] = value;
         //console.log("k = " + value + " pos = " + logToPos(value));
-        od[numDisto].curve = makeDistortionCurve(k[numDisto]);
+        //console.log("distoTypes = " + distoTypes[numDisto]);
+        od[numDisto].curve = wsFactory.distorsionCurves[distoTypes[numDisto]](k[numDisto]);//makeDistortionCurve(k[numDisto]);
+        currentWSCurve = od[numDisto].curve;
+        //od[numDisto].curve = makeDistortionCurve(sliderValue);
+        //makeDistortionCurve(k[numDisto]);
         //od[numDisto].curve = makeDistortionCurve(sliderValue);
         // update output labels
         var output = document.querySelector("#k" + numDisto);
@@ -596,7 +854,7 @@ function Amp(context) {
         // in [0, 10]
         currentK = linearValue;
         // redraw curves
-        drawCurrentDisto();
+        drawCurrentDistos();
     }
 
     function logToPos(logValue) {
@@ -614,7 +872,7 @@ function Amp(context) {
     }
 
     function changeOversampling(cb) {
-        for (var i = 0; i < 4; i++) {
+        for (var i = 0; i < 2; i++) {
             if(cb.checked) {
                 // Oversampling generates some (small) latency
                 od[i].oversample = '4x';
@@ -629,7 +887,8 @@ function Amp(context) {
          // Not sure if this is necessary... My ears can't hear the difference
          // between oversampling=node and 4x ? Maybe we should re-init the
          // waveshaper curves ?
-         changeDistoType();
+         //changeDistoType1();
+         //changeDistoType2();
     }
 
     // Returns an array of distorsions values in [0, 10] range
@@ -638,8 +897,15 @@ function Amp(context) {
         return parseFloat(pos).toFixed(1);
     }
 
-    function drawCurrentDisto() {
-        var c = currentWSCurve;
+    function drawCurrentDistos() {
+        // draws both the transfer function and a sinusoidal
+        // signal transformed, for each distorsion stage
+        drawDistoCurves(distoDrawer1, signalDrawer1, od[0].curve);
+        drawDistoCurves(distoDrawer2, signalDrawer2, od[1].curve);
+    }
+
+    function drawDistoCurves(distoDrawer, signalDrawer, curve) {
+        var c = curve;
         distoDrawer.clear();
         drawCurve(distoDrawer, c);
 
@@ -650,17 +916,18 @@ function Amp(context) {
         signalDrawer.drawCurve('red', 2);
 
         //signalDrawer.makeCurve(distord, 0, Math.PI*2);
-        var c1 = distord();
-        drawCurve(signalDrawer, c1);
+        var cTransformed = distord(c);
+        drawCurve(signalDrawer, cTransformed);
+
     }
-    function distord() {
+
+    function distord(c) {
         // return the curve of sin(x) transformed by the current wave shaper
         // function
         // x is in [0, 2*Math.PI]
         // sin(x) in [-1, 1]
 
         // current distorsion curve
-        var c = currentWSCurve;
         var curveLength = c.length;
 
         var c2 = new Float32Array(DRAWER_CANVAS_SIZE);
@@ -713,6 +980,26 @@ function Amp(context) {
         // Adjust to [0, 1]
         var value = parseFloat(sliderVal/10);
         outputGain.gain.value = value;
+
+        // update output labels
+        //var output = document.querySelector("#outputGain");
+        //output.value = parseFloat(sliderVal).toFixed(1);
+
+        // refresh slider state
+        //var slider = document.querySelector("#OGslider");
+        //slider.value = parseFloat(sliderVal).toFixed(1);
+
+        // refresh knob state
+        var knob = document.querySelector("#Knob1");
+        knob.setValue(parseFloat(sliderVal).toFixed(1), false);
+    }
+
+        // volume aka preamp output volume
+    function changeInputGain(sliderVal) {
+        // sliderVal is in [0, 10]
+        // Adjust to [0, 1]
+        var value = parseFloat(sliderVal/10);
+        inputGain.gain.value = value;
 
         // update output labels
         //var output = document.querySelector("#outputGain");
@@ -804,147 +1091,31 @@ function Amp(context) {
     // --------
     function initPresets() {
         // updated 10/4/2016
-        preset1 = {"name":"Clean 1","distoName":"standard","boost":false,"LCF":200,"HCF":12000,"K1":"0.0","K2":"0.0","K3":"0.0","K4":"0.0","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.0","Q2":"49.0","Q3":"42.0","Q4":"11.0","OG":"5.0","BF":"5.0","MF":"4.2","TF":"3.1","PF":"5.0","EQ":[-2,-1,0,3,-9,-4],"MV":"5.8","RN":"Fender Hot Rod","RG":"2.0","CN":"Vintage Marshall 1","CG":"2.0"};
+        var preset1 = {"name":"Hard Rock classic 1","boost":false,"LS1Freq":720,"LS1Gain":-6,"LS2Freq":320,"LS2Gain":-5,"gain1":1,"distoName1":"asymetric","K1":"7.8","HP1Freq":6,"HP1Q":0.707099974155426,"LS3Freq":720,"LS3Gain":-6,"gain2":1,"distoName2":"notSoDistorded","K2":"7.8","OG":"7.0","BF":"8.2","MF":"8.2","TF":"3.8","PF":"6.9","EQ":[5,11,-6,-10,7,2],"MV":"7.2","RN":"Fender Hot Rod","RG":"2.0","CN":"Marshall 1960, axis","CG":"9.4"};
         presets.push(preset1);
 
-        preset2 = {
-            "name":"Crunch 1",
-            "LCF":90,
-            "HCF":7000,
-            "K1":"4.7",
-            "K2":"4.1",
-            "K3":"10.0",
-            "K4":"10.0",
-            "F1":147,
-            "F2":569,
-            "F3":1915,
-            "F4":4680,
-            "Q1":0,
-            "Q2":49,
-            "Q3":42,
-            "Q4":11,
-            "OG":7.9,
-            "BF":5,
-            "MF":5,
-            "TF":5,
-            "PF":5,
-            "EQ":[-2,-1,2,2,-7,-13],
-            "MV":"0.7",
-            "RG":"2.0",
-            "CG":"5.4"
-        }
+        var preset2 = {"name":"Clean and Warm","boost":false,"LS1Freq":720,"LS1Gain":-6,"LS2Freq":320,"LS2Gain":1.600000023841858,"gain1":1,"distoName1":"asymetric","K1":"7.8","HP1Freq":6,"HP1Q":0.707099974155426,"LS3Freq":720,"LS3Gain":-6,"gain2":1,"distoName2":"standard","K2":"0.9","OG":"7.0","BF":"6.7","MF":"7.1","TF":"3.2","PF":"6.9","EQ":[10,5,-7,-7,16,0],"MV":"7.2","RN":"Fender Hot Rod","RG":"1.4","CN":"Marshall 1960, axis","CG":"8.8"};
         presets.push(preset2);
 
-        preset3 = {
-            "name":"Clean 2",
-            "LCF":242,
-            "HCF":17165,
-            "K1":"0.0",
-            "K2":"0.0",
-            "K3":"0.0",
-            "K4":"0.0",
-            "F1":204,
-            "F2":300,
-            "F3":2904,
-            "F4":5848,
-            "Q1":0,
-            "Q2":29,
-            "Q3":55,
-            "Q4":20,
-            "OG":"7.1",
-            "BF":7.2,
-            "MF":6.5,
-            "TF":5.9,
-            "PF":8,
-            "EQ":[-2,-1,-2,4,11,3],
-            "MV":"8.3",
-            "RG":"2.8",
-            "CG":"6.3"
-        };
+        var preset3 = {"name":"Strong and Warm","boost":false,"LS1Freq":720,"LS1Gain":-6,"LS2Freq":320,"LS2Gain":-1,"gain1":1.0299999713897705,"distoName1":"asymetric","K1":"7.8","HP1Freq":6,"HP1Q":0.707099974155426,"LS3Freq":720,"LS3Gain":-6,"gain2":1,"distoName2":"superClean","K2":"7.8","OG":"7.0","BF":"8.2","MF":"6.7","TF":"5.0","PF":"6.9","EQ":[0,0,0,-1,0,1],"MV":"5.9","RN":"Fender Hot Rod","RG":"1.1","CN":"Vox Custom Bright 4x12 M930 Axis 1","CG":"8.0"};
         presets.push(preset3);
 
-        preset4 = {"name":"Funk Blues Clean","distoName":"standard","LCF":242,"HCF":7000,"K1":"5.0","K2":"5.0","K3":"9.9","K4":"9.9","F1":204,"F2":300,"F3":2904,"F4":5848,"Q1":"0.0","Q2":"29.0","Q3":"55.0","Q4":"20.0","OG":"2.1","BF":"9.9","MF":"6.5","TF":"2.7","PF":"8.0","EQ":[9,11,-19,-22,11,-15],"MV":"2.6","RG":"0.0","CG":"6.3"};
+        //preset4 = {"name":"Fat sound","boost":true,"LS1Freq":720,"LS1Gain":-5.800000190734863,"LS2Freq":320,"LS2Gain":6.599999904632568,"gain1":0.11999999731779099,"distoName1":"asymetric","K1":"5.4","HP1Freq":6,"HP1Q":0.707099974155426,"LS3Freq":720,"LS3Gain":-5.199999809265137,"gain2":1,"distoName2":"standard","K2":"5.4","OG":"3.5","BF":"3.2","MF":"5.0","TF":"5.0","PF":"9.7","EQ":[1,0,-6,-8,-6,-30],"MV":"3.1","RN":"Fender Hot Rod","RG":"0.0","CN":"Marshall 1960, axis","CG":"3.4"};
+        //presets.push(preset4);
+        var preset4 = {"name":"Clean no reverb","boost":false,"LS1Freq":720,"LS1Gain":-6,"LS2Freq":320,"LS2Gain":-6.300000190734863,"gain1":1,"distoName1":"asymetric","K1":"2.1","HP1Freq":6,"HP1Q":0.707099974155426,"LS3Freq":720,"LS3Gain":-6,"gain2":1,"distoName2":"crunch","K2":"2.1","OG":"7.0","BF":"6.7","MF":"5.0","TF":"5.0","PF":"8.9","EQ":[4,13,-8,-8,15,12],"MV":"3.7","RN":"Fender Hot Rod","RG":"0.0","CN":"Marshall 1960, axis","CG":"4.5"};
         presets.push(preset4);
 
-        preset5 = {
-            "name":"Marshall Hi Gain",
-            "LCF":345,
-            "HCF":18461,
-            "K1":"10.0",
-            "K2":"10.0",
-            "K3":"10.0",
-            "K4":"10.0",
-            "F1":186,
-            "F2":792,
-            "F3":2402,
-            "F4":6368,
-            "Q1":2,
-            "Q2":1,
-            "Q3":1,
-            "Q4":1,
-            "OG":"0.2",
-            "BF":"4.8",
-            "MF":"4.1",
-            "TF":"5.9",
-            "PF":"8.3",
-            "EQ":[14,7,28,3,22,18],
-            "MV":"2",
-            "RG":"2",
-            "CG":"7.4"
-        };
+        var preset5 = {"name":"Another Clean Sound","boost":false,"LS1Freq":720,"LS1Gain":-6,"LS2Freq":320,"LS2Gain":-6.300000190734863,"gain1":1,"distoName1":"asymetric","K1":"6.4","HP1Freq":6,"HP1Q":0.707099974155426,"LS3Freq":720,"LS3Gain":-6,"gain2":1,"distoName2":"crunch","K2":"6.4","OG":"7.0","BF":"6.7","MF":"5.0","TF":"5.0","PF":"8.9","EQ":[4,13,-8,-8,15,12],"MV":"3.7","RN":"Fender Hot Rod","RG":"2","CN":"Marshall 1960, axis","CG":"4.5"};
         presets.push(preset5);
 
-        preset6 = {"name":"Aerosmith WTW","distoName":"standard","LCF":345,"HCF":7000,"K1":"3.3","K2":"3.3","K3":"6.6","K4":"6.6","F1":186,"F2":792,"F3":2402,"F4":6368,"Q1":"2.0","Q2":"1.0","Q3":"1.0","Q4":"1.0","OG":"0.6","BF":"4.8","MF":"4.1","TF":"3.4","PF":"8.3","EQ":[12,2,22,13,16,18],"MV":"2.2","RG":"0.0","CG":"0.0"};
- 
+        var preset6 = {"name":"Mostly even harmonics","boost":false,"LS1Freq":720,"LS1Gain":-6,"LS2Freq":320,"LS2Gain":-7.5,"gain1":1,"distoName1":"standard","K1":"6.7","HP1Freq":6,"HP1Q":0.707099974155426,"LS3Freq":720,"LS3Gain":-6,"gain2":1,"distoName2":"standard","K2":"6.7","OG":"7.0","BF":"4.3","MF":"2.6","TF":"6.1","PF":"4.2","EQ":[5,12,-5,-10,2,10],"MV":"1.7","RN":"Fender Hot Rod","RG":"0.0","CN":"Vintage Marshall 1","CG":"8.4"};
         presets.push(preset6);
 
-        preset7 = {"name":"MW 1","LCF":10,"HCF":7000,"K1":"5.0","K2":"8.5","K3":"10.0","K4":"2.0","F1":186,"F2":792,"F3":2402,"F4":6368,"Q1":16,"Q2":1,"Q3":1,"Q4":5,"OG":"0.4","BF":"6.0","MF":"2.4","TF":"3.7","PF":"2.6","EQ":[14,18,-5,3,13,25],"MV":"9.9","RG":"2.9","CG":"8.9"};
+        var preset7 = {"name":"Hard Rock classic 2","boost":false,"LS1Freq":720,"LS1Gain":-6,"LS2Freq":320,"LS2Gain":-10.199999809265137,"gain1":1,"distoName1":"standard","K1":"5.2","HP1Freq":6,"HP1Q":0.707099974155426,"LS3Freq":720,"LS3Gain":-6,"gain2":1,"distoName2":"notSoDistorded","K2":"5.1","OG":"7.0","BF":"8.7","MF":"8.0","TF":"3.8","PF":"9.4","EQ":[19,8,-6,-10,7,2],"MV":"5.5","RN":"Fender Hot Rod","RG":"0.7","CN":"Marshall 1960, axis","CG":"9.2"};
         presets.push(preset7);
-
-        preset8 = {"name":"Hells Bells","distoName":"standard","boost":false,"LCF":157,"HCF":17716,"K1":"2.5","K2":"2.5","K3":"5.0","K4":"5.0","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.1","Q2":"0.6","Q3":"1.1","Q4":"0.1","OG":"4.5","BF":"5.0","MF":"5.0","TF":"5.0","PF":"5.0","EQ":[14,8,0,3,14,3],"MV":"0.5","RN":"Fender Hot Rod","RG":"2.0","CN":"Vintage Marshall 1","CG":"2.0"}
+        
+        var preset8 = {"name":"SuperClean/Jazz","boost":false,"LS1Freq":720,"LS1Gain":-6,"LS2Freq":320,"LS2Gain":-6.300000190734863,"gain1":1,"distoName1":"crunch","K1":"5.4","HP1Freq":6,"HP1Q":0.707099974155426,"LS3Freq":720,"LS3Gain":-6,"gain2":1,"distoName2":"crunch","K2":"5.4","OG":"7.0","BF":"7.0","MF":"5.1","TF":"5.2","PF":"3.1","EQ":[10,7,0,-10,5,12],"MV":"3.8","RN":"Fender Hot Rod","RG":"1.5","CN":"Marshall 1960, axis","CG":"4.5"};
         presets.push(preset8);
-
-        preset9 = {"name":"Smoke on the Water","LCF":298,"HCF":8703,"K1":"9.6","K2":"9.6","K3":"9.6","K4":"9.6","F1":300,"F2":1058,"F3":2297,"F4":7000,"Q1":2.5,"Q2":2,"Q3":0.6000000238418579,"Q4":0.4000000059604645,"OG":"4.5","BF":"4.0","MF":"8.5","TF":"3.8","PF":"3.1","EQ":[14,19,-7,-12,19,16],"MV":"1.8","RG":"1.6","CG":"10.0"};
-        presets.push(preset9);
-
-        preset10 = {"name":"Neat Neat Neat/Punk","distoName":"standard","LCF":184,"HCF":7000,"K1":"4.0","K2":"4.0","K3":"8.0","K4":"8.0","F1":71,"F2":300,"F3":3303,"F4":6210,"Q1":"2.5","Q2":"0.0","Q3":"17.2","Q4":"0.4","OG":"2.0","BF":"4.0","MF":"1.6","TF":"2.0","PF":"6.4","EQ":[-12,-12,-10,3,1,2],"MV":"10.0","RG":"3.4","CG":"5.4"};
-        presets.push(preset10);
-
-        preset11 = {"name":"Crunch 2","distoName":"standard","LCF":259,"HCF":12000,"K1":"2.0","K2":"2.0","K3":"3.9","K4":"3.9","F1":242,"F2":493,"F3":1780,"F4":4382,"Q1":"0.3","Q2":"12.6","Q3":"0.3","Q4":"2.8","OG":"10.0","BF":"8.1","MF":"4.5","TF":"2.9","PF":"9.8","EQ":[6,-5,-21,-3,-18,0],"MV":"8.2","RG":"1.2","CG":"8.7"}
-        presets.push(preset11);
-
-        preset12 = {"name":"Noisy 1","distoName":"NoisyHiGain","LCF":46,"HCF":9788,"K1":"0.9","K2":"0.9","K3":"1.9","K4":"1.9","F1":242,"F2":493,"F3":1200,"F4":3500,"Q1":"0.3","Q2":"0.0","Q3":"0.3","Q4":"0.0","OG":"3.2","BF":"7.4","MF":"6.7","TF":"5.2","PF":"4.8","EQ":[8,1,13,16,-12,-19],"MV":"6.6","RG":"0.0","CG":"7.5"}
-        presets.push(preset12);
-
-        preset13 = {"name":"Marshall Hi-Gain 2","distoName":"HiGainModern","LCF":200,"HCF":12000,"K1":"0.9","K2":"0.9","K3":"1.8","K4":"1.8","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"0.0","Q2":"49.0","Q3":"42.0","Q4":"11.0","OG":"3.0","BF":"5.0","MF":"5.0","TF":"0.1","PF":"5.0","EQ":[-2,-1,0,3,1,3],"MV":"0.3","RG":"2.0","CG":"2.0"}
-        presets.push(preset13);
-
-        preset14 = {"name":"Clean 3","distoName":"smooth","LCF":200,"HCF":12000,"K1":"2.5","K2":"2.5","K3":"5.0","K4":"5.0","F1":242,"F2":493,"F3":1780,"F4":4382,"Q1":"0.3","Q2":"12.6","Q3":"0.3","Q4":"2.8","OG":"10.0","BF":"8.1","MF":"4.5","TF":"2.9","PF":"9.8","EQ":[6,-5,-21,-3,3,0],"MV":"9.8","RG":"3.7","CG":"4.6"}
-        presets.push(preset14);
-
-        preset15 = {"name":"ELectro Acoustic","distoName":"smooth","LCF":200,"HCF":12000,"K1":"2.5","K2":"2.5","K3":"5.0","K4":"5.0","F1":242,"F2":493,"F3":1780,"F4":4382,"Q1":"0.3","Q2":"12.6","Q3":"0.3","Q4":"2.8","OG":"10.0","BF":"8.1","MF":"4.5","TF":"2.9","PF":"9.8","EQ":[6,-5,-21,-3,3,0],"MV":"8.2","RG":"3.7","CG":"4.6"}
-        presets.push(preset15);
-
-        preset16 = {"name":"Heartbreak Riff","distoName":"standard","LCF":214,"HCF":15820,"K1":"4.1","K2":"4.1","K3":"8.2","K4":"8.2","F1":186,"F2":792,"F3":2402,"F4":4836,"Q1":"2.9","Q2":"0.7","Q3":"1.0","Q4":"1.0","OG":"0.8","BF":"4.8","MF":"6.0","TF":"5.9","PF":"8.9","EQ":[15,19,19,-2,17,-3],"MV":"2.1","RG":"1.2","CG":"7.4"}
-        presets.push(preset16);
-
-        preset17 = {"name":"Light My Knob","distoName":"superClean","LCF":256,"HCF":12000,"K1":"0.0","K2":"0.0","K3":"0.0","K4":"0.0","F1":147,"F2":569,"F3":2382,"F4":5696,"Q1":"0.0","Q2":"0.0","Q3":"0.0","Q4":"0.0","OG":"5.9","BF":"5.0","MF":"5.0","TF":"5.0","PF":"8.0","EQ":[-2,10,-10,-20,17,3],"MV":"6.5","RG":"2.0","CG":"6.7"}
-        presets.push(preset17);
-
-        preset18 = {"name":"Gainsbourgh Funk","distoName":"superClean","LCF":345,"HCF":18461,"K1":"0.4","K2":"0.4","K3":"0.7","K4":"0.7","F1":186,"F2":792,"F3":2402,"F4":6368,"Q1":"0.0","Q2":"23.7","Q3":"1.0","Q4":"1.0","OG":"6.6","BF":"8.0","MF":"1.3","TF":"5.9","PF":"10.0","EQ":[12,-2,-10,-20,2,11],"MV":"10.0","RG":"2.0","CG":"4.2"}
-        presets.push(preset18);
-
-        preset19 = {"name":"Revolution Beatles","distoName":"HiGainModern","LCF":200,"HCF":12000,"K1":"2.3","K2":"2.3","K3":"4.6","K4":"4.6","F1":147,"F2":569,"F3":1915,"F4":4680,"Q1":"1.9","Q2":"3.4","Q3":"4.2","Q4":"11.0","OG":"0.5","BF":"5.0","MF":"2.2","TF":"4.7","PF":"8.0","EQ":[-2,9,29,29,1,-3],"MV":"0.2","RG":"1.7","CG":"4.9"}
-        presets.push(preset19);
-
-        preset20 = {"name":"Noisy 2","distoName":"NoisyHiGain","LCF":289,"HCF":8720,"K1":"5.1","K2":"3.7","K3":"5.0","K4":"5.0","F1":91,"F2":548,"F3":1820,"F4":4535,"Q1":"4.3","Q2":"0.5","Q3":"0.3","Q4":"2.8","OG":"6.7","BF":"8.1","MF":"7.3","TF":"3.2","PF":"6.1","EQ":[9,-10,3,10,4,-17],"MV":"3.5","RG":"3.7","CG":"8.5"}
-        presets.push(preset20);
-
-        preset21 = {"name":"Highway to Hell","distoName":"fuzz","boost":true,"LCF":214,"HCF":15820,"K1":"0.9","K2":"0.3","K3":"4.2","K4":"1.3","F1":83,"F2":838,"F3":1694,"F4":5782,"Q1":"2.9","Q2":"1.7","Q3":"2.7","Q4":"1.0","OG":"0.8","BF":"4.8","MF":"6.0","TF":"5.9","PF":"8.9","EQ":[15,16,19,-2,17,-3],"MV":"2.1","RN":"Fender Hot Rod","RG":"0.0","CN":"Vintage Marshall 1","CG":"6.0"};
-        presets.push(preset21);
-
-        preset22 = {"name":"Love RnRoll","distoName":"smooth","boost":true,"LCF":214,"HCF":15820,"K1":"3.8","K2":"3.8","K3":"7.5","K4":"7.5","F1":186,"F2":792,"F3":2402,"F4":4836,"Q1":"2.9","Q2":"0.7","Q3":"1.0","Q4":"1.0","OG":"0.8","BF":"4.8","MF":"6.0","TF":"5.9","PF":"8.9","EQ":[15,19,19,-2,17,-3],"MV":"2.1","RN":"Fender Hot Rod","RG":"1.2","CN":"Vintage Marshall 1","CG":"7.4"};
-        presets.push(preset22);
 
         presets.forEach(function (p, index) {
             var option = document.createElement("option");
@@ -960,30 +1131,31 @@ function Amp(context) {
     }
 
     function setPreset(p) {
-        if(p.distoName === undefined) {
-            p.distoName = "standard";
+        if(p.distoName1 === undefined) {
+            p.distoName1 = "standard";
+        }
+         if(p.distoName2 === undefined) {
+            p.distoName2 = "standard";
         }
 
         if(p.boost === undefined) p.boost = false;
         changeBoost(p.boost);
 
-        changeLowCutFreqValue(p.LCF);
-        changeHicutFreqValue(p.HCF);
-
+        // stage 1
+        changeLowShelf1FrequencyValue(p.LS1Freq);
+        changeLowShelf1GainValue(p.LS1Gain);
+        changeLowShelf2FrequencyValue(p.LS2Freq);
+        changeLowShelf2GainValue(p.LS2Gain);
+        changePreampStage1GainValue(p.gain1);
+        changeDisto1TypeFromPreset(p.distoName1);
         changeDistorsionValues(p.K1, 0);
+
+        // stage 2
+        changeLowShelf3FrequencyValue(p.LS3Freq);
+        changeLowShelf3GainValue(p.LS3Gain);
+        changePreampStage2GainValue(p.gain2);
+        changeDisto2TypeFromPreset(p.distoName2);
         changeDistorsionValues(p.K2, 1);
-        changeDistorsionValues(p.K3, 2);
-        changeDistorsionValues(p.K4, 3);
-
-        changeFreqValues(p.F1, 0);
-        changeFreqValues(p.F2, 1);
-        changeFreqValues(p.F3, 2);
-        changeFreqValues(p.F4, 3);
-
-        changeQValues(p.Q1, 0);
-        changeQValues(p.Q2, 1);
-        changeQValues(p.Q3, 2);
-        changeQValues(p.Q4, 3);
 
         changeOutputGain(p.OG);
 
@@ -1001,9 +1173,6 @@ function Amp(context) {
         changeCabinetSimImpulse(p.CN);
 
         changeEQValues(p.EQ);
-
-
-       changeDistoTypeFromPreset(p.distoName);
     }
 
     function getPresets() {
@@ -1011,32 +1180,35 @@ function Amp(context) {
     }
 
     function setDefaultPreset() {
-        setPreset(preset1);
+        setPreset(presets[0]);
     }
 
     function printCurrentAmpValues() {
         var currentPresetValue = {
             name: 'current',
-            distoName : currentDistoName,
+            
             boost: boost.isActivated(),
-            LCF: lowCutFilter.frequency.value,
-            HCF: hiCutFilter.frequency.value,
+
+            LS1Freq: lowShelf1.frequency.value,
+            LS1Gain: lowShelf1.gain.value,
+            LS2Freq: lowShelf2.frequency.value,
+            LS2Gain: lowShelf2.gain.value,
+            gain1: preampStage1Gain.gain.value,
+            distoName1 : menuDisto1.value,
             K1: getDistorsionValue(0),
+            HP1Freq: highPass1.frequency.value,
+            HP1Q: highPass1.Q.value,
+
+            LS3Freq: lowShelf3.frequency.value,
+            LS3Gain: lowShelf3.gain.value,
+            gain2: preampStage2Gain.gain.value,
+            distoName2 : menuDisto2.value,
             K2: getDistorsionValue(1),
-            K3: getDistorsionValue(2),
-            K4: getDistorsionValue(3),
-            F1: filters[0].frequency.value,
-            F2: filters[1].frequency.value,
-            F3: filters[2].frequency.value,
-            F4: filters[3].frequency.value,
-            Q1: filters[0].Q.value.toFixed(1),
-            Q2: filters[1].Q.value.toFixed(1),
-            Q3: filters[2].Q.value.toFixed(1),
-            Q4: filters[3].Q.value.toFixed(1),
-            OG: (outputGain.gain.value*10).toFixed(1),
-            BF: ((bassFilter.gain.value / 3) + 5).toFixed(1), // bassFilter.gain.value = (value-5) * 3;
-            MF: ((midFilter.gain.value / 2) + 5).toFixed(1), // midFilter.gain.value = (value-5) * 2;
-            TF: ((trebleFilter.gain.value / 5) + 5).toFixed(1), // trebleFilter.gain.value = (value-5) * 5;
+
+            OG: (output.gain.value*10).toFixed(1),
+            BF: ((bassFilter.gain.value / 7) + 10).toFixed(1), // bassFilter.gain.value = (value-5) * 3;
+            MF: ((midFilter.gain.value / 4) + 5).toFixed(1), // midFilter.gain.value = (value-5) * 2;
+            TF: ((trebleFilter.gain.value / 10) + 10).toFixed(1), // trebleFilter.gain.value = (value-5) * 5;
             PF: ((presenceFilter.gain.value / 2) + 5).toFixed(1), // presenceFilter.gain.value = (value-5) * 2;
             EQ: eq.getValues(),
             MV: masterVolume.gain.value.toFixed(1),
@@ -1106,7 +1278,7 @@ function Amp(context) {
     }
 
     // API: methods exposed
-    return {
+    return { 
         input: input,
         output: output,
         boostOnOff:boostOnOff,
@@ -1115,8 +1287,18 @@ function Amp(context) {
         cabinet: cabinetSim,
         changeInputGainValue: changeInputGainValue,
         changeOutputGainValue:changeOutputGainValue,
-        changeLowCutFreqValue: changeLowCutFreqValue,
-        changeHicutFreqValue: changeHicutFreqValue,
+
+        changeLowShelf1FrequencyValue: changeLowShelf1FrequencyValue,
+        changeLowShelf1GainValue: changeLowShelf1GainValue,
+        changeLowShelf2FrequencyValue: changeLowShelf2FrequencyValue,
+        changeLowShelf2GainValue: changeLowShelf2GainValue,
+        changePreampStage1GainValue: changePreampStage1GainValue,
+        changeHighPass1FrequencyValue: changeHighPass1FrequencyValue,
+        changeHighPass1QValue: changeHighPass1QValue,
+        changeLowShelf3FrequencyValue: changeLowShelf3FrequencyValue,
+        changeLowShelf3GainValue: changeLowShelf3GainValue,
+        changePreampStage2GainValue: changePreampStage2GainValue,
+
         changeBassFilterValue : changeBassFilterValue,
         changeMidFilterValue : changeMidFilterValue,
         changeTrebleFilterValue : changeTrebleFilterValue,
@@ -1124,9 +1306,9 @@ function Amp(context) {
         changeDrive: changeDrive,
         changeDistorsionValues: changeDistorsionValues,
         changeOversampling: changeOversampling,
-        changeQValues: changeQValues,
-        changeFreqValues: changeFreqValues,
         changeOutputGain: changeOutputGain,
+        changeInputGain: changeInputGain,
+
         changeMasterVolume: changeMasterVolume,
         changeReverbGain: changeReverbGain,
         changeRoom: changeRoom,
@@ -1155,6 +1337,10 @@ var reverbImpulses = [
         }
     ];
 var cabinetImpulses = [
+{
+            name: "Marshall 1960, axis",
+            url: "assets/impulses/cabinet/Marshall1960.wav"
+        },    
         {
             name: "Vintage Marshall 1",
             url: "assets/impulses/cabinet/Block%20Inside.wav"
@@ -1166,11 +1352,7 @@ var cabinetImpulses = [
         {
             name: "Fender Champ, axis",
             url: "assets/impulses/cabinet/FenderChampAxisStereo.wav"
-        },
-        {
-            name: "Marshall 1960, axis",
-            url: "assets/impulses/cabinet/Marshall1960.wav"
-        }    
+        }
     ];
 // ------- CONVOLVER, used for both reverb and cabinet simulation -------------------
 function Convolver(context, impulses, menuId) {
@@ -1179,10 +1361,6 @@ function Convolver(context, impulses, menuId) {
     var inputGain = context.createGain();
     var outputGain = context.createGain();
     var decodedImpulse;
-
-    var irDefaultURL = "assets/impulses/reverb/cardiod-rear-levelled.wav";
-    var ir1 = "assets/impulses/reverb/pcm90cleanplate.wav";
-    var ir2 = "assets/impulses/reverb/ScalaMilanOperaHall.wav";
 
     var menuIRs;
     var IRs = impulses;

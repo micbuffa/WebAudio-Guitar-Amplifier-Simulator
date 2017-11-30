@@ -11,9 +11,9 @@
         <script src="js/distorsionFactory.js"></script>
         <script src="js/curveDrawer.js"></script>
 
-    <script src="./bower_components/webcomponentsjs/webcomponents.js"></script>
+    <script src="./bower_components/webcomponentsjs/webcomponents-lite.min.js"></script>
     <link rel="import" href="./bower_components/polymer/polymer.html">
-    <link rel="import" href="./webcomponents/webaudio-controls.min.html">
+    <link rel="import" href="./webaudio-controls.html">
         <link  rel="stylesheet" charset="UTF-8" href="css/translateelement.css">
         <link  rel="stylesheet" charset="UTF-8" href="css/amp.css">
 
@@ -27,26 +27,15 @@
         </style>
     </head>
     <body style="background-color:#eee;">
-        <h1>WebAudio-Controls PFA </h1>
-        <!-- Amp jsbin -->
-        <b>Expérimental (not working yet...):</b>  
-        <div class="select">
-            <label for="audioSource">Audio input source: </label><select id="audioSource"></select>
-        </div>
+        <h1>Guitar Amp Simulation using WebAudio</a></h1>
+ 
 
-        <div class="select">
-            <label for="audioOutput">Audio output destination: </label><select id="audioOutput"></select>
-        </div>
-
-
-        <h2>Guitar amp emulation made with the Web Audio API</h2>
-        <p>Author: Michel Buffa (@micbuffa), GUI with the help of Mahdi Wartani.</p>
-        <p><a href="https://github.com/micbuffa/WebAudio-Guitar-Amplifier-Simulator/blob/master/README.md" target="_blank">You may visit the GitHub repo.</a></p>
-        <p><b>You need Google Chrome (the app should support soon other browsers) + don't forget to set the default input in your OS preferences. If you plugged a guitar in, then press the pulsing button in the middle of the Amp to activate it. Otherwise you can try the amp with the audio player on the left, press play and use the preset menu or the buttons/sliders.</b></p>
-        <p>Signal goes first throught hicut and low cut filters, then through 4 filters (F and Q), then to a distorsion stage (Ks), then to a tonestack (B/M/T/P) then to a master volume. It is then post processed by the EQ and a reverb, for fine tuning the tone, set the EQ after the rest. Finally there is a cabinet simulator (bottom of advanced settings).<br>
-            Check <a href="http://jsbin.com/cixiri/edit?js,console,output" target="_blank">this</a> to understand how filters work.
-
-
+        <p>Author: Michel Buffa (@micbuffa), GUI with the help of Mahdi Wartani, big thanks to LePou for giving me so many hints too.</p>
+        <p>Videos with explanations on YouTube: <a href="https://www.youtube.com/watch?v=5q5jRh4qV_w" target="_blank">video1</a> and <a href="https://www.youtube.com/watch?v=7bf3Dgl-qGc" target="_blank">video2</a></p>
+        <p><a href="https://github.com/micbuffa/WebAudio-Guitar-Amplifier-Simulator-3" target="_blank">You may visit the GitHub repo.</a></p>
+        <p><b>You need Google Chrome, FireFox Nightly or Opera (the app should support soon other browsers) + don't forget to set the default input in your OS preferences. If you plugged a guitar in, then press the pulsing button in the middle of the Amp to activate it. Otherwise you can try the amp with the audio player on the left, press play and use the preset menu or the buttons/sliders.</b></p>
+        <p>The preamp is close to the one from the famous Marshall JCM 800 guitar amp.</p>
+        
         <article style="display: flex; flex-direction: row; width:100%">
             <section style="flex: 1;">
 
@@ -55,90 +44,101 @@
 
                     <p>Press play to preview presets</p>
                     <audio id="player" controls  loop>
-                        <source src="assets/audio/g_t_120_30.mp3">
-
+                        <source src="assets/audio/BasketCase Greenday riff DI.mp3">
+                        <source src="assets/audio/BasketCase Greenday riff DI.ogg">
                         Your browser does not support the audio tag.
                     </audio>
+                    <div id="demoSample">Choose a demo sample: 
+                        <select id="demoSampleMenu" onchange="changeDemoSample(this.value);">
+                          <option value="0">Metal riff 1</option>
+                          <option value="1">Metal riff 2</option>
+                          <!--
+                          <option value="2">Blues solo 1</option>
+                      -->
+                          <option value="3">Cool rythm</option>
+                          <option value="4">Trash metal</option>
+                          <option value="5">Black Sabbath Rythm</option>
+                          <option value="6">Black Sabbath Solo</option>
+                          <option value="7">Basketcase Riff</option>
+                          <option value="8">In Bloom riff</option>
+                          <option value="9">Muse solo</option>
+                          <option value="10">Muse rythm</option>
+                          <!--
+                          <option value="11">Simple guitar riff</option>
+                            -->
+                        </select>
+                    </div>
+                    <p>Preamp internals</p>
+                    <div class="controls">
+                        <label>lowShelf1 Freq</label>
+                        <input id="lowShelf1FreqSlider" type="range" value="720" step="1" min="500" max="1000" oninput="amp.changeLowShelf1FrequencyValue(this.value, 0);"></input>
+                        <output id="lowShelf1Freq">720 Hz</output>
+                    </div>
+                    <div class="controls">
+                        <label>lowShelf1 Gain</label>
+                        <input id="lowShelf1GainSlider" type="range" value="-6" step="0.1" min="-10" max="0" oninput="amp.changeLowShelf1GainValue(this.value, 0);"></input>
+                        <output id="lowShelf1Gain">-6 dB</output>
+                    </div>
+                    <div class="controls">
+                        <label>lowShelf2 Freq</label>
+                        <input id="lowShelf2FreqSlider" type="range" value="320" step="1" min="300" max="400" oninput="amp.changeLowShelf2FrequencyValue(this.value, 0);"></input>
+                        <output id="lowShelf2Freq">320 Hz</output>
+                    </div>
+                    <div class="controls">
+                        <label>lowShelf2 Gain</label>
+                        <input id="lowShelf2GainSlider" type="range" value="-6" step="0.1" min="-12" max="10" oninput="amp.changeLowShelf2GainValue(this.value, 0);"></input>
+                        <output id="lowShelf2Gain">-5 dB</output>
+                    </div>
 
-                    <p>Low and high cut frequencies</p>
                     <div class="controls">
-                        <label>Low</label>
-                        <input id="lowCutFreqSlider" type="range" value="20" step="1" min="10" max="350" oninput="amp.changeLowCutFreqValue(this.value, 0);"></input>
-                        <output id="lowCutFreq">20 Hz</output>
-                    </div>
-                    <div class="controls">
-                        <label>High</label>
-                        <input id="hiCutFreqSlider" type="range" value="10000" step="1" min="7000" max="20000" oninput="amp.changeHicutFreqValue(this.value, 0);"></input>
-                        <output id="hiCutFreq">10000 Hz</output>
+                        <label>Stage 1 Gain</label>
+                        <input id="preampStage1GainSlider" type="range" value="0.1" step="0.01" min="0" max="10" oninput="amp.changePreampStage1GainValue(this.value, 0);"></input>
+                        <output id="preampStage1Gain">1</output>
                     </div>
 
-                    <p>Cut off frequencies (low, mid1, mid2, high)</p>
                     <div class="controls">
-                        <label>F1</label>
-                        <input id="F1slider" type="range" value="147" step="1" min="70" max="300" oninput="amp.changeFreqValues(this.value, 0);"></input>
-                        <output id="freq0">147 Hz</output>
+                        <label>HighPass1 freq</label>
+                        <input id="highPass1FreqSlider" type="range" value="6" step="1" min="5" max="7" oninput="amp.changeHighPass1FrequencyValue(this.value, 0);"></input>
+                        <output id="highPass1Freq">6 Hz</output>
                     </div>
                     <div class="controls">
-                        <label>F2</label>
-                        <input id="F2slider" type="range" value="569" step="1" min="300" max="1200" oninput="amp.changeFreqValues(this.value, 1);"></input>
-                        <output id="freq1">569 Hz</output>
+                        <label>HighPass1 Q</label>
+                        <input id="highPass1QSlider" type="range" value="0.7071" step="0.001" min="0" max="5" oninput="amp.changeHighPass1QValue(this.value, 0);"></input>
+                        <output id="highPass1Q">0.7071</output>
                     </div>
-                    <div class="controls">
-                        <label>F3</label>
-                        <input id="F3slider"  type="range" value="1200" step="1" min="1200" max="3500" oninput="amp.changeFreqValues(this.value, 2);"></input>
-                        <output id="freq2">1200 Hz</output>
-                    </div>
-                    <div class="controls">
-                        <label>F4</label>
-                        <input id="F4slider"  type="range" value="3500" step="1" min="3500" max="7000" oninput="amp.changeFreqValues(this.value, 3);"></input>
-                        <output id="freq3">3500 Hz</output>
-                    </div>
-                    <p>Presence (Q3, Q4), resonnance (Q1, Q2) associated to filters above...</p>
-                    <div class="controls">
-                        <label>Q1</label>
-                        <input id="Q1slider" type="range" value="1" step="0.1" min="0" max="5" oninput="amp.changeQValues(this.value, 0);"></input>
-                        <output id="q0">1</output>
-                    </div>
-                    <div class="controls">
-                        <label>Q2</label>
-                        <input id="Q2slider" type="range" value="10" step="0.1" min="0" max="30" oninput="amp.changeQValues(this.value, 1);"></input>
-                        <output id="q1">10</output>
-                    </div>
-                    <div class="controls">
-                        <label>Q3</label>
-                        <input id="Q3slider" type="range" value="10" step="0.1" min="0" max="30" oninput="amp.changeQValues(this.value, 2);"></input>
-                        <output id="q2">10</output>
-                    </div>
-                    <div class="controls">
-                        <label>Q4</label>
-                        <input id="Q4slider" type="range" value="5" step="0.1" min="0" max="17" oninput="amp.changeQValues(this.value, 3);"></input>
-                        <output id="q3">5</output>
-                    </div>
-                    <p>
 
-                    <p>DRIVE : distorsion levels (per band, low, mid1, mid2, high)
+                    <div class="controls">
+                        <label>lowShelf3 Freq</label>
+                        <input id="lowShelf3FreqSlider" type="range" value="720" step="1" min="300" max="1000" oninput="amp.changeLowShelf3FrequencyValue(this.value, 0);"></input>
+                        <output id="lowShelf3Freq">720 Hz</output>
+                    </div>
+                    <div class="controls">
+                        <label>lowShelf3 Gain</label>
+                        <input id="lowShelf3GainSlider" type="range" value="-6" step="0.1" min="-10" max="0" oninput="amp.changeLowShelf3GainValue(this.value, 0);"></input>
+                        <output id="lowShelf3Gain">-6 dB</output>
+                    </div>
+
+                    <div class="controls">
+                        <label>Stage 2 Gain</label>
+                        <input id="preampStage2GainSlider" type="range" value="1" step="0.01" min="0" max="10" oninput="amp.changePreampStage2GainValue(this.value, 0);"></input>
+                        <output id="preampStage2Gain">1</output>
+                    </div>
+
+ 
+
+                    <p>DRIVE : distorsion levels</p>
                     <div class="controls">
                         <label>K1</label>
-                        <input id="K1slider" type="range" value="0" step="0.1" min="0" max="10" oninput="amp.changeDistorsionValues(this.value, 0);"></input>
-                        <output id="k0">0</output>
+                        <input id="K1slider" type="range" value="4" step="0.1" min="0" max="10" oninput="amp.changeDistorsionValues(this.value, 0);"></input>
+                        <output id="k0">4</output>
                     </div>
 
                     <div class="controls">
                         <label>K2</label>
-                        <input id="K2slider" type="range" value="0" step="0.1" min="0" max="10" oninput="amp.changeDistorsionValues(this.value, 1);"></input>
-                        <output id="k1">10</output>
+                        <input id="K2slider" type="range" value="4" step="0.1" min="0" max="10" oninput="amp.changeDistorsionValues(this.value, 1);"></input>
+                        <output id="k1">4</output>
                     </div>
-                    <div class="controls">
-                        <label>K3</label>
-                        <input id="K3slider" type="range" value="0" step="0.1" min="0" max="10" oninput="amp.changeDistorsionValues(this.value, 2);"></input>
-                        <output id="k2">15</output> 
-                    </div>
-                    <div class="controls">
-                        <label>K4</label>
-                        <input id="K4slider" type="range" value="0" step="0.1" min="0" max="10" oninput="amp.changeDistorsionValues(this.value, 3);"></input>
-                        <output id="k3">15</output>
-                    </div>
-                    <p>
+                   <p>
                     <div class="onoffswitch">
                         <input type="checkbox" name="onoffswitch" class="onoffswitch-checkbox" id="myonoffswitch"  onclick="amp.changeOversampling(this);">
                         <label class="onoffswitch-label" for="myonoffswitch">
@@ -149,7 +149,7 @@
 
                     <p>
                         <label for="convolverCabinetSlider">Cabinet Simulator (Dry/Wet)</label>
-                        <input type="range" min="0" max="10" step="0.1" value="2" id="convolverCabinetSlider" oninput="amp.changeRoom(this.value);"/>
+                        <input type="range" min="0" max="10" step="0.1" value="7.5" id="convolverCabinetSlider" oninput="amp.changeRoom(this.value);"/>
                         <output id="cabinetGainOutput">2</output>
 
                     <p>
@@ -163,32 +163,34 @@
             <section style="flex: 4; order: 1;">
                 <div class="ampGUI" style="position:relative;background-image: url('img/imageprincipalefinienew.png');width:1127px;height:545px;padding:0px;">
                     <div>
-                        <webaudio-knob id="Knob1"   step="0.1"  style="position:absolute;left:66px;top:90px" src="img/Prophet.png" value="0"  min="0" max="10" diameter="69" sprites="99" tooltip="Volume" ></webaudio-knob>
-                        <webaudio-knob id="Knob2"  step="0.1" style="position:absolute;left:136px;top:90px" src="img/Prophet.png" value="5" min="0" max="10" diameter="69" sprites="99" tooltip="Treble"></webaudio-knob>
-                        <!-- boost button -->
+                        <webaudio-knob id="Knob1"   step="0.1"  style="position:absolute;left:66px;top:90px" src="img/Prophet.png" value="7"  min="0" max="10" diameter="69" sprites="99" tooltip="Volume" ></webaudio-knob>
+                        <webaudio-knob id="Knob2"  step="0.1" style="position:absolute;left:136px;top:90px" src="img/Prophet.png" value="2" min="0" max="10" diameter="69" sprites="99" tooltip="Master"></webaudio-knob>
+                         <!-- boost button -->
                         <label style="color:white;position:absolute;left:70px;top:64px">Clean / Disto : </label>
                         <!--
                         <webaudio-switch style="color:white; position:absolute;left:225px;top:58px" id="toggleBoost" value="0" src="img/led.png" tooltip="Toggle clean/disto channel"></webaudio-switch>
                       -->
                        <webaudio-switch style="color:white; position:absolute;left:170px;top:58px" id="toggleBoost" value="0" src="img/boostSwitch.png" tooltip="Toggle clean/disto channel"></webaudio-switch>
                         <!-- drive knob -->
-                        <webaudio-knob id="Knob3"   style="position:absolute;left:207px;top:90px" src="img/Prophet.png" value="0" step="0.1" min="0" max="10" diameter="69" sprites="99" tooltip="Bass"></webaudio-knob>
-                        <select style="position:absolute;left:190px;top:190px"  id="distorsionMenu">
+                        <webaudio-knob id="Knob3"   style="position:absolute;left:207px;top:90px" src="img/Prophet.png" value="0" step="0.1" min="0" max="10" diameter="69" sprites="99" tooltip="Drive"></webaudio-knob>
+                        <select style="position:absolute;left:155px;top:356px"  id="distorsionMenu1">
                         </select>
-                        <webaudio-knob id="Knob4"   style="position:absolute;left:275px;top:90px" src="img/Prophet.png" value="0" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Master"></webaudio-knob>
-                        <webaudio-knob id="Knob5"   style="position:absolute;left:345px;top:90px" src="img/Prophet.png" value="0" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Midlle"></webaudio-knob>
-                        <webaudio-knob id="Knob6"   style="position:absolute;left:415px;top:90px" src="img/Prophet.png" value="0" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Lead Master"></webaudio-knob>
-                        <webaudio-knob id="Knob7"   style="position:absolute;left:486px;top:90px" src="img/Prophet.png" value="0" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Reverb"></webaudio-knob>
+                        <select style="position:absolute;left:393px;top:356px"  id="distorsionMenu2">
+                        </select>
+                        <webaudio-knob id="Knob4"   style="position:absolute;left:275px;top:90px" src="img/Prophet.png" value="5" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Bass"></webaudio-knob>
+                        <webaudio-knob id="Knob5"   style="position:absolute;left:345px;top:90px" src="img/Prophet.png" value="5" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Midlle"></webaudio-knob>
+                        <webaudio-knob id="Knob6"   style="position:absolute;left:415px;top:90px" src="img/Prophet.png" value="5" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Treble"></webaudio-knob>
+                        <webaudio-knob id="Knob7"   style="position:absolute;left:486px;top:90px" src="img/Prophet.png" value="2" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Reverb"></webaudio-knob>
                         <select style="position:absolute;left:455px;top:190px" id="reverbImpulses">
                         </select>
-                        <webaudio-knob id="Knob8"   style="position:absolute;left:557px;top:90px" src="img/Prophet.png" value="0" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Presence"></webaudio-knob>
+                        <webaudio-knob id="Knob8"   style="position:absolute;left:557px;top:90px" src="img/Prophet.png" value="5" min="0" max="10" step="0.1" diameter="69" sprites="99" tooltip="Presence"></webaudio-knob>
                     </div>
-                    <webaudio-slider id="slider1" style="position:absolute;left:731px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" tooltip="Slider1"></webaudio-slider>
-                    <webaudio-slider id="slider2" Units="Db" style="position:absolute;left:774px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100"  tooltip="Slider2"></webaudio-slider>
-                    <webaudio-slider id="slider3" Units="Db" style="position:absolute;left:819px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" tooltip="Slider3"></webaudio-slider>
-                    <webaudio-slider id="slider4" Units="Db" style="position:absolute;left:865px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" units="%" tooltip="Slider4"></webaudio-slider>
-                    <webaudio-slider id="slider5" Units="Db" style="position:absolute;left:908px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" tooltip="Slider5"></webaudio-slider>
-                    <webaudio-slider id="slider6" Units="Db" style="position:absolute;left:951px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-30" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" units="%" tooltip="Slider6"></webaudio-slider>      
+                    <webaudio-slider id="slider1" style="position:absolute;left:731px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-19" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" tooltip="Slider1"></webaudio-slider>
+                    <webaudio-slider id="slider2" Units="Db" style="position:absolute;left:774px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="0" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100"  tooltip="Slider2"></webaudio-slider>
+                    <webaudio-slider id="slider3" Units="Db" style="position:absolute;left:819px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="0" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" tooltip="Slider3"></webaudio-slider>
+                    <webaudio-slider id="slider4" Units="Db" style="position:absolute;left:865px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="0" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" units="%" tooltip="Slider4"></webaudio-slider>
+                    <webaudio-slider id="slider5" Units="Db" style="position:absolute;left:908px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="0" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" tooltip="Slider5"></webaudio-slider>
+                    <webaudio-slider id="slider6" Units="Db" style="position:absolute;left:951px;top:64px" src="img/vsliderbody.png" knobsrc="img/vsliderknob.png" value="-25" min="-30" max="30" step="1" basewidth="24" baseheight="128" knobwidth="24" knobheight="24" ditchLength="100" units="%" tooltip="Slider6"></webaudio-slider>      
                     <webaudio-switch id="switch1"  style="position:absolute;left:1033px;top:72px" src="img/switch_toggle.png" value="0" height="45" width="45" tooltip="Switch-A Tooltip text test"></webaudio-switch>
                     <webaudio-switch id="led" style="position:absolute;left:1043px;top:125px" src="img/led_23_red.png" value="1" height="23" width="23" tooltip="Switch-B"></webaudio-switch>
                     <webaudio-switch id="switch2" style="position:absolute;left:1033px;top:140px" src="img/switch_toggle.png" value="0" height="45" width="45" tooltip="Switch-B"></webaudio-switch>
@@ -207,10 +209,14 @@
                     <select id="QFPresetMenu2" style="position:absolute;left:850px;top:270px"></select>
 
                     <p><div style="color:white; position:absolute;left:100px;top:385px">
-                        <canvas id="distoDrawerCanvas" style="margin-right:20px;left-margin:20px;" width="100" height="100"></canvas>
-                        <canvas id="signalDrawerCanvas" width="100" height="100"></canvas>
+                        <canvas id="distoDrawerCanvas1" style="margin-right:10px;left-margin:10px;" width="100" height="100"></canvas>
+                        <canvas id="signalDrawerCanvas1" width="100" height="100"></canvas>
                     </div>
                     <div style="color:white; position:absolute;left:100px;top:495px">Transfer function and distorded signal example...
+                    </div>
+                    <div style="color:white; position:absolute;left:340px;top:385px">
+                        <canvas id="distoDrawerCanvas2" style="margin-right:10px;left-margin:10px;" width="100" height="100"></canvas>
+                        <canvas id="signalDrawerCanvas2" width="100" height="100"></canvas>
                     </div>
             </section>
         </article>
@@ -222,61 +228,71 @@
             // Volume
             var volumeOutputPreAmp = document.querySelector("#Knob1");
             volumeOutputPreAmp.addEventListener("change", function (evt) {
-                amp.changeOutputGain(evt.target.value);
+                if(amp !== undefined)
+                    amp.changeOutputGain(evt.target.value);
             });
 
             // Master Volume
             var masterVolume = document.querySelector("#Knob2");
             masterVolume.addEventListener("change", function (evt) {
-                amp.changeMasterVolume(evt.target.value);
+                if(amp !== undefined)
+                    amp.changeMasterVolume(evt.target.value);
             });
 
             // Drive
             var drive = document.querySelector("#Knob3");
             drive.addEventListener("change", function (evt) {
-                amp.changeDrive(evt.target.value);
+                if(amp !== undefined)
+                    amp.changeDrive(evt.target.value);
             });
 
             // Bass
             var bass = document.querySelector("#Knob4");
             bass.addEventListener("change", function (evt) {
-                amp.changeBassFilterValue(evt.target.value);
+                if(amp !== undefined)
+                    amp.changeBassFilterValue(evt.target.value);
             });
 
             // Middle
             var mid = document.querySelector("#Knob5");
             mid.addEventListener("change", function (evt) {
-                amp.changeMidFilterValue(evt.target.value);
+                if(amp !== undefined)
+                    amp.changeMidFilterValue(evt.target.value);
             });
 
             // Treble
             var treble = document.querySelector("#Knob6");
             treble.addEventListener("change", function (evt) {
-                amp.changeTrebleFilterValue(evt.target.value);
+                if(amp !== undefined)
+                    amp.changeTrebleFilterValue(evt.target.value);
             });
 
             // Reverb
             var reverb = document.querySelector("#Knob7");
             reverb.addEventListener("change", function (evt) {
-                amp.changeReverbGain(evt.target.value);
+                if(amp !== undefined)
+                    amp.changeReverbGain(evt.target.value);
             });
 
             // Presence 
             var presence = document.querySelector("#Knob8");
             presence.addEventListener("change", function (evt) {
-                amp.changePresenceFilterValue(evt.target.value);
+                if(amp !== undefined)
+                    amp.changePresenceFilterValue(evt.target.value);
             });
 
             // input gain
             var inputGain = document.querySelector("#Knob9");
             inputGain.addEventListener("change", function (evt) {
-                amp.changeInputGainValue(evt.target.value);
+                if(amp !== undefined)
+                    amp.changeInputGainValue(evt.target.value);
             });
 
         // output gain
             var outputGain = document.querySelector("#Knob10");
             outputGain.addEventListener("change", function (evt) {
-                amp.changeOutputGainValue(evt.target.value);
+                if(amp !== undefined)
+                    amp.changeOutputGainValue(evt.target.value);
             });
 
             // Equalizer
@@ -288,13 +304,16 @@
             function createListenerForEQ(i) {
                 var eq = document.querySelector("#slider" + i);
                 eq.addEventListener("change", function (evt) {
-                    amp.eq.changeGain(evt.target.value, i - 1);
+                    if(amp !== undefined)
+                        amp.eq.changeGain(evt.target.value, i - 1);
                 });
             }
 
             // On / Off switch
             var onOff = document.querySelector("#switch1");
             onOff.addEventListener("change", function (evt) {
+                if(amp === undefined) return;
+                
                 var state = {};
                 if (evt.target.value == 1) {
                     state.checked = false;
