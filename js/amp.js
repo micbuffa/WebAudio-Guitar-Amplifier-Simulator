@@ -43,7 +43,10 @@ function gotStream() {
     console.log('AMP CREATED')
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 6b59200af9c6aecd6ef01e1188e7d1a7323a4765
 function changeDemoSample(val) {
     console.log(val);
   audioPlayer.src = demoSampleURLs[val];
